@@ -1,0 +1,80 @@
+# Ambiente de DESENVOLVIMENTO: docker compose up --build
+name: condosync
+
+x-app-env: &app-env
+  NODE_ENV: development
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  # Dentro da rede do compose o host do banco é "db"
+  DATABASE_URL: postgresql://${POSTGRES_USER:-condosync}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/${POSTGRES_DB:-condosync}
+  DB_SSL: 'false'
+  JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+  SUPABASE_URL: ${SUPABASE_URL:-}
+  SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+  SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+
+services:
+  db:
+    image: postgres:16-alpine # já inclui contrib (citext, btree_gist)
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-condosync}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:-condosync}
+    ports:
+      # Porta no host configurável (use DB_PORT=5433 se já houver um Postgres local)
+      - '127.0.0.1:${DB_PORT:-5432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment: *app-env
+    command: sh -c "node scripts/migrate.js && node scripts/seed.js"
+    volumes:
+      - ./db:/app/db:ro
+      - ./scripts:/app/scripts:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      <<: *app-env
+      # Polling garante hot reload com volumes no Windows/macOS
+      WATCHPACK_POLLING: 'true'
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+      - /app/node_modules # mantém o node_modules da imagem (Linux)
+      - /app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  adminer:
+    image: adminer:4
+    profiles: ['tools']
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

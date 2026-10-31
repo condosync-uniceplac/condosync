@@ -1,0 +1,468 @@
+// Modelagem oficial do CondoSync (DBML / dbdiagram.io).
+// Fonte de verdade da modelagem; db/migrations/001_schema.sql é a conversão para PostgreSQL.
+
+Enum "perfil_acesso" {
+  "MORADOR"
+  "PORTARIA"
+  "SINDICO"
+  "ADMIN"
+}
+
+Enum "tipo_termo" {
+  "TERMOS_USO"
+  "POLITICA_PRIVACIDADE"
+}
+
+Enum "status_reserva" {
+  "PENDENTE"
+  "CONFIRMADA"
+  "CANCELADA"
+  "CONCLUIDA"
+}
+
+Enum "tipo_documento" {
+  "RG"
+  "CPF"
+  "CNPJ"
+  "OUTRO"
+}
+
+Enum "status_visita" {
+  "AGUARDANDO"
+  "AUTORIZADO"
+  "PRESENTE"
+  "FINALIZADO"
+  "CANCELADO"
+}
+
+Enum "prioridade_aviso" {
+  "NORMAL"
+  "URGENTE"
+}
+
+Enum "urgencia_chamado" {
+  "BAIXA"
+  "MEDIA"
+  "ALTA"
+}
+
+Enum "status_chamado" {
+  "ABERTO"
+  "EM_ANALISE"
+  "RESOLVIDO"
+}
+
+Table "condominios" {
+  "id" bigint [pk, increment]
+  "nome" varchar(150) [not null]
+  "cnpj" char(14) [unique, check: `cnpj ~ '^\d{14}$'`]
+  "cep" char(8) [check: `cep ~ '^\d{8}$'`]
+  "logradouro" varchar(200)
+  "numero" varchar(10)
+  "bairro" varchar(100)
+  "cidade" varchar(100)
+  "uf" char(2)
+  "criado_em" timestamptz [not null, default: `now()`]
+}
+
+Table "blocos" {
+  "id" bigint [pk, increment]
+  "condominio_id" bigint [not null]
+  "nome" varchar(50) [not null]
+
+  Indexes {
+    (condominio_id, nome) [unique]
+  }
+}
+
+Table "unidades" {
+  "id" bigint [pk, increment]
+  "bloco_id" bigint [not null]
+  "numero" varchar(20) [not null]
+
+  Indexes {
+    (bloco_id, numero) [unique]
+    bloco_id [name: "ix_unidades_bloco"]
+  }
+}
+
+Table "usuarios" {
+  "id" bigint [pk, increment]
+  "nome_completo" varchar(150) [not null]
+  "email" citext [unique, not null]
+  "telefone" varchar(20) [not null]
+  "cpf" char(11) [unique, not null, check: `cpf ~ '^\d{11}$'`]
+  "rg" varchar(20)
+  "data_nascimento" date [not null, check: `data_nascimento <= current_date`]
+  "senha_hash" text [not null]
+  "ativo" boolean [not null, default: true]
+  "criado_em" timestamptz [not null, default: `now()`]
+  "atualizado_em" timestamptz [not null, default: `now()`]
+}
+
+Table "vinculos_condominio" {
+  "id" bigint [pk, increment]
+  "usuario_id" bigint [not null]
+  "condominio_id" bigint [not null]
+  "perfil" perfil_acesso [not null]
+  "unidade_id" bigint
+  "ativo" boolean [not null, default: true]
+  "criado_em" timestamptz [not null, default: `now()`]
+
+  Checks {
+    `perfil <> 'MORADOR' OR unidade_id IS NOT NULL` [name: 'ck_morador_tem_unidade']
+  }
+
+  Indexes {
+    (usuario_id, condominio_id, perfil, unidade_id) [unique]
+    (condominio_id, perfil) [name: "ix_vinculos_condominio"]
+    unidade_id [name: "ix_vinculos_unidade"]
+  }
+}
+
+Table "termos_documentos" {
+  "id" bigint [pk, increment]
+  "tipo" tipo_termo [not null]
+  "versao" varchar(20) [not null]
+  "conteudo" text [not null]
+  "vigente_desde" timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (tipo, versao) [unique]
+  }
+}
+
+Table "aceites_termos" {
+  "usuario_id" bigint [not null]
+  "termo_id" bigint [not null]
+  "aceito_em" timestamptz [not null, default: `now()`]
+  "ip" inet
+
+  Indexes {
+    (usuario_id, termo_id) [pk]
+  }
+}
+
+Table "recuperacoes_senha" {
+  "id" bigint [pk, increment]
+  "usuario_id" bigint [not null]
+  "token_hash" text [unique, not null]
+  "expira_em" timestamptz [not null]
+  "usado_em" timestamptz
+  "criado_em" timestamptz [not null, default: `now()`]
+
+  Indexes {
+    usuario_id [name: "ix_recuperacao_usuario"]
+  }
+}
+
+Table "espacos" {
+  "id" bigint [pk, increment]
+  "condominio_id" bigint [not null]
+  "nome" varchar(100) [not null]
+  "descricao" text
+  "capacidade_pessoas" integer [not null, check: `capacidade_pessoas > 0`]
+  "valor" numeric(10,2) [not null, check: `valor >= 0`, default: 0]
+  "ativo" boolean [not null, default: true]
+
+  Indexes {
+    (condominio_id, nome) [unique]
+  }
+}
+
+Table "reservas" {
+  "id" bigint [pk, increment]
+  "espaco_id" bigint [not null]
+  "vinculo_id" bigint [not null]
+  "inicio" timestamptz [not null]
+  "fim" timestamptz [not null]
+  "status" status_reserva [not null, default: 'PENDENTE']
+  "valor_cobrado" numeric(10,2) [not null, check: `valor_cobrado >= 0`, default: 0]
+  "criado_em" timestamptz [not null, default: `now()`]
+
+  Checks {
+    `fim > inicio`
+  }
+
+  Indexes {
+    (vinculo_id, inicio) [name: "ix_reservas_vinculo"]
+    (espaco_id, inicio) [name: "ix_reservas_espaco_ini"]
+  }
+}
+
+Table "visitantes" {
+  "id" bigint [pk, increment]
+  "condominio_id" bigint [not null]
+  "nome" varchar(150) [not null]
+  "tipo_documento" tipo_documento [not null]
+  "documento" varchar(20) [not null]
+  "criado_em" timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (condominio_id, tipo_documento, documento) [unique]
+  }
+}
+
+Table "visitas" {
+  "id" bigint [pk, increment]
+  "visitante_id" bigint [not null]
+  "unidade_id" bigint [not null]
+  "autorizado_por_id" bigint
+  "registrada_por_id" bigint
+  "placa_veiculo" varchar(8)
+  "previsao_entrada" timestamptz
+  "entrada_em" timestamptz
+  "saida_em" timestamptz
+  "status" status_visita [not null, default: 'AGUARDANDO']
+  "codigo_convite" uuid [unique, not null, default: `gen_random_uuid()`]
+  "criado_em" timestamptz [not null, default: `now()`]
+
+  Checks {
+    `saida_em IS NULL OR (entrada_em IS NOT NULL AND saida_em >= entrada_em)`
+    `status NOT IN ('PRESENTE', 'FINALIZADO') OR entrada_em IS NOT NULL`
+    `status <> 'FINALIZADO' OR saida_em IS NOT NULL`
+    `status NOT IN ('AUTORIZADO', 'PRESENTE', 'FINALIZADO') OR autorizado_por_id IS NOT NULL`
+  }
+
+  Indexes {
+    (unidade_id, criado_em) [name: "ix_visitas_unidade"]
+    visitante_id [name: "ix_visitas_visitante"]
+    (status, previsao_entrada) [name: "ix_visitas_ativas"]
+  }
+}
+
+Table "categorias_aviso" {
+  "id" smallint [pk, increment]
+  "nome" varchar(50) [unique, not null]
+}
+
+Table "avisos" {
+  "id" bigint [pk, increment]
+  "condominio_id" bigint [not null]
+  "categoria_id" smallint [not null]
+  "autor_id" bigint [not null]
+  "titulo" varchar(200) [not null]
+  "corpo" text [not null]
+  "prioridade" prioridade_aviso [not null, default: 'NORMAL']
+  "publicado_em" timestamptz [not null, default: `now()`]
+  "atualizado_em" timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (condominio_id, publicado_em) [name: "ix_avisos_mural"]
+    categoria_id [name: "ix_avisos_categoria"]
+  }
+}
+
+Table "anexos_aviso" {
+  "id" bigint [pk, increment]
+  "aviso_id" bigint [not null]
+  "nome_arquivo" varchar(255) [not null]
+  "storage_path" text [not null]
+  "mime_type" varchar(100) [not null]
+  "tamanho_bytes" bigint [not null, check: `tamanho_bytes >= 0`]
+
+  Indexes {
+    aviso_id [name: "ix_anexos_aviso"]
+  }
+}
+
+Table "aviso_leituras" {
+  "aviso_id" bigint [not null]
+  "usuario_id" bigint [not null]
+  "lido_em" timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (aviso_id, usuario_id) [pk]
+    usuario_id [name: "ix_leituras_usuario"]
+  }
+}
+
+Table "categorias_chamado" {
+  "id" smallint [pk, increment]
+  "nome" varchar(50) [unique, not null]
+}
+
+Table "chamados" {
+  "id" bigint [pk, increment]
+  "condominio_id" bigint [not null]
+  "solicitante_id" bigint [not null]
+  "unidade_id" bigint
+  "categoria_id" smallint [not null]
+  "urgencia" urgencia_chamado [not null, default: 'MEDIA']
+  "titulo" varchar(200) [not null]
+  "descricao" text [not null]
+  "status" status_chamado [not null, default: 'ABERTO']
+  "criado_em" timestamptz [not null, default: `now()`]
+  "atualizado_em" timestamptz [not null, default: `now()`]
+  "resolvido_em" timestamptz
+
+  Checks {
+    `(status = 'RESOLVIDO') = (resolvido_em IS NOT NULL)`
+  }
+
+  Indexes {
+    (condominio_id, status, criado_em) [name: "ix_chamados_painel"]
+    solicitante_id [name: "ix_chamados_solicitante"]
+  }
+}
+
+Table "anexos_chamado" {
+  "id" bigint [pk, increment]
+  "chamado_id" bigint [not null]
+  "nome_arquivo" varchar(255) [not null]
+  "storage_path" text [not null]
+  "mime_type" varchar(100) [not null]
+  "tamanho_bytes" bigint [not null, check: `tamanho_bytes >= 0`]
+
+  Indexes {
+    chamado_id [name: "ix_anexos_chamado"]
+  }
+}
+
+Table "chamado_acompanhamentos" {
+  "id" bigint [pk, increment]
+  "chamado_id" bigint [not null]
+  "autor_id" bigint [not null]
+  "novo_status" status_chamado
+  "comentario" text
+  "criado_em" timestamptz [not null, default: `now()`]
+
+  Checks {
+    `novo_status IS NOT NULL OR comentario IS NOT NULL`
+  }
+
+  Indexes {
+    (chamado_id, criado_em) [name: "ix_acompanh_chamado"]
+  }
+}
+
+Table "enquetes" {
+  "id" bigint [pk, increment]
+  "condominio_id" bigint [not null]
+  "criador_id" bigint [not null]
+  "pergunta" varchar(300) [not null]
+  "descricao" text
+  "abre_em" timestamptz [not null, default: `now()`]
+  "encerra_em" timestamptz [not null]
+  "criado_em" timestamptz [not null, default: `now()`]
+
+  Checks {
+    `encerra_em > abre_em`
+  }
+
+  Indexes {
+    (condominio_id, encerra_em) [name: "ix_enquetes_condominio"]
+  }
+}
+
+Table "enquete_opcoes" {
+  "id" bigint [pk, increment]
+  "enquete_id" bigint [not null]
+  "texto" varchar(200) [not null]
+  "ordem" smallint [not null]
+
+  Indexes {
+    (enquete_id, ordem) [unique]
+    (id, enquete_id) [unique]
+  }
+}
+
+Table "votos_enquete" {
+  "enquete_id" bigint [not null]
+  "usuario_id" bigint [not null]
+  "opcao_id" bigint [not null]
+  "votado_em" timestamptz [not null, default: `now()`]
+  "atualizado_em" timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (enquete_id, usuario_id) [pk]
+    opcao_id [name: "ix_votos_opcao"]
+    usuario_id [name: "ix_votos_usuario"]
+  }
+}
+
+Ref:"condominios"."id" <? "blocos"."condominio_id" [delete: cascade]
+
+Ref:"blocos"."id" <? "unidades"."bloco_id" [delete: cascade]
+
+Ref:"usuarios"."id" <? "vinculos_condominio"."usuario_id" [delete: cascade]
+
+Ref:"condominios"."id" <? "vinculos_condominio"."condominio_id" [delete: cascade]
+
+Ref:"unidades"."id" ?<? "vinculos_condominio"."unidade_id"
+
+Ref:"usuarios"."id" <? "aceites_termos"."usuario_id" [delete: cascade]
+
+Ref:"termos_documentos"."id" <? "aceites_termos"."termo_id"
+
+Ref:"usuarios"."id" <? "recuperacoes_senha"."usuario_id" [delete: cascade]
+
+Ref:"condominios"."id" <? "espacos"."condominio_id" [delete: cascade]
+
+Ref:"espacos"."id" <? "reservas"."espaco_id"
+
+Ref:"vinculos_condominio"."id" <? "reservas"."vinculo_id"
+
+Ref:"condominios"."id" <? "visitantes"."condominio_id" [delete: cascade]
+
+Ref:"visitantes"."id" <? "visitas"."visitante_id"
+
+Ref:"unidades"."id" <? "visitas"."unidade_id"
+
+Ref:"vinculos_condominio"."id" ?<? "visitas"."autorizado_por_id"
+
+Ref:"vinculos_condominio"."id" ?<? "visitas"."registrada_por_id"
+
+Ref:"condominios"."id" <? "avisos"."condominio_id" [delete: cascade]
+
+Ref:"categorias_aviso"."id" <? "avisos"."categoria_id"
+
+Ref:"vinculos_condominio"."id" <? "avisos"."autor_id"
+
+Ref:"avisos"."id" <? "anexos_aviso"."aviso_id" [delete: cascade]
+
+Ref:"avisos"."id" <? "aviso_leituras"."aviso_id" [delete: cascade]
+
+Ref:"usuarios"."id" <? "aviso_leituras"."usuario_id" [delete: cascade]
+
+Ref:"condominios"."id" <? "chamados"."condominio_id" [delete: cascade]
+
+Ref:"vinculos_condominio"."id" <? "chamados"."solicitante_id"
+
+Ref:"unidades"."id" ?<? "chamados"."unidade_id"
+
+Ref:"categorias_chamado"."id" <? "chamados"."categoria_id"
+
+Ref:"chamados"."id" <? "anexos_chamado"."chamado_id" [delete: cascade]
+
+Ref:"chamados"."id" <? "chamado_acompanhamentos"."chamado_id" [delete: cascade]
+
+Ref:"vinculos_condominio"."id" <? "chamado_acompanhamentos"."autor_id"
+
+Ref:"condominios"."id" <? "enquetes"."condominio_id" [delete: cascade]
+
+Ref:"vinculos_condominio"."id" <? "enquetes"."criador_id"
+
+Ref:"enquetes"."id" <? "enquete_opcoes"."enquete_id" [delete: cascade]
+
+Ref:"usuarios"."id" <? "votos_enquete"."usuario_id" [delete: cascade]
+
+Ref:"enquete_opcoes".("id", "enquete_id") <? "votos_enquete".("opcao_id", "enquete_id") [delete: cascade]
+
+Records categorias_aviso(nome) {
+  'Obras'
+  'Assembleias'
+  'Normas'
+  'Financeiro'
+  'Manutenção'
+  'Social'
+}
+
+Records categorias_chamado(nome) {
+  'Barulho'
+  'Vaga de Garagem'
+  'Manutenção'
+  'Segurança'
+  'Limpeza'
+  'Outros'
+}

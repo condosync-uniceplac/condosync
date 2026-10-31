@@ -1,0 +1,17 @@
+# Imagem de desenvolvimento: hot reload com o código montado como volume
+FROM node:20-alpine
+
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# O código-fonte é montado via volume pelo docker-compose.yml;
+# o COPY abaixo permite usar a imagem também sem volume (ex.: serviço migrate).
+COPY . .
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

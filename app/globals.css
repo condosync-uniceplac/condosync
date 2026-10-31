@@ -1,0 +1,101 @@
+/* Ordem das camadas: o CSS global antigo fica abaixo dos utilitários do Tailwind
+   (usados nas telas do painel). Os CSS Modules continuam sem camada e prevalecem. */
+@layer theme, base, legado, components, utilities;
+
+@layer legado {
+  :root {
+    --color-bg: #f5f7fa;
+    --color-surface: #ffffff;
+    --color-text: #1f2933;
+    --color-muted: #616e7c;
+    --color-border: #d9e2ec;
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-danger: #c81e1e;
+    --color-success: #0e7a43;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.5;
+  }
+
+  a {
+    color: var(--color-primary);
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  /* O Tailwind (usado nas telas do painel) traz um "reset" de estilos. Nas páginas SEM o painel
+   (login e cadastro, que usam CSS Modules), devolvemos os padrões do navegador para que elas
+   continuem exatamente como eram antes da instalação do Tailwind. */
+  body:not(:has(.condo-app)) :where(*, ::before, ::after) {
+    border-color: revert;
+  }
+  body:not(:has(.condo-app)) :where(h1, h2, h3, h4, h5, h6) {
+    font-size: revert;
+    font-weight: revert;
+  }
+  body:not(:has(.condo-app))
+    :where(h1, h2, h3, h4, h5, h6, p, ul, ol, dl, dd, blockquote, figure, pre, hr, fieldset) {
+    margin: revert;
+    padding: revert;
+  }
+  body:not(:has(.condo-app)) :where(ul, ol) {
+    list-style: revert;
+  }
+  body:not(:has(.condo-app)) :where(a) {
+    text-decoration: revert;
+  }
+  body:not(:has(.condo-app)) :where(button, input, select, textarea) {
+    margin: revert;
+    border: revert;
+    border-radius: revert;
+    padding: revert;
+    background-color: revert;
+    color: revert;
+    cursor: revert;
+  }
+  body:not(:has(.condo-app)) ::placeholder {
+    color: revert;
+    opacity: revert;
+  }
+  body:not(:has(.condo-app)) ::-webkit-date-and-time-value {
+    min-height: revert;
+    text-align: revert;
+  }
+  body:not(:has(.condo-app)) ::-webkit-datetime-edit {
+    display: revert;
+    padding-block: revert;
+  }
+  body:not(:has(.condo-app)) ::-webkit-datetime-edit-fields-wrapper {
+    padding: revert;
+  }
+  body:not(:has(.condo-app)) ::-webkit-datetime-edit-year-field,
+  body:not(:has(.condo-app)) ::-webkit-datetime-edit-month-field,
+  body:not(:has(.condo-app)) ::-webkit-datetime-edit-day-field,
+  body:not(:has(.condo-app)) ::-webkit-calendar-picker-indicator {
+    padding-block: revert;
+  }
+}

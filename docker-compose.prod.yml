@@ -1,0 +1,25 @@
+# PRODUÇÃO: apenas a aplicação; o banco é o PostgreSQL do Supabase.
+# Uso: docker compose -f docker-compose.prod.yml up --build -d
+name: condosync-prod
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: condosync:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?defina DATABASE_URL (Supabase) no .env}
+      DB_SSL: ${DB_SSL:-true}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+    ports:
+      - '3000:3000'
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    security_opt:
+      - no-new-privileges:true
