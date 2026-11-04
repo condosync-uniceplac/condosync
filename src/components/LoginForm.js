@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styles from './AuthCard.module.css';
 
@@ -61,6 +62,9 @@ export default function LoginForm() {
       <div className={styles.field}>
         <label htmlFor="senha">Senha</label>
         <input id="senha" name="senha" type="password" autoComplete="current-password" required />
+        <Link href="/esqueci-senha" style={{ fontSize: '0.875rem', alignSelf: 'flex-end' }}>
+          Esqueceu a senha?
+        </Link>
       </div>
       <button className={styles.button} type="submit" disabled={enviando}>
         {enviando ? 'Entrando...' : 'Entrar'}

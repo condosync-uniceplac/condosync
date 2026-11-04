@@ -15,16 +15,19 @@ export const PERFIS = Object.freeze({
 const PUBLIC_PREFIXES = [
   '/login',
   '/cadastro',
+  '/esqueci-senha',
+  '/redefinir-senha',
   '/api/health',
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/forgot-password',
+  '/api/auth/reset-password',
   '/api/auth/logout',
   '/api/condominios',
 ];
 
 /** Páginas só para quem NÃO está logado (logado é mandado ao painel). */
-const GUEST_ONLY = ['/login', '/cadastro'];
+const GUEST_ONLY = ['/login', '/cadastro', '/esqueci-senha', '/redefinir-senha'];
 
 /** Prefixos restritos a perfis específicos; o que não estiver aqui exige apenas login. */
 const RULES = [

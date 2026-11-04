@@ -18,3 +18,17 @@ export async function invalidarPendentes(usuarioId, db = pool) {
     [usuarioId],
   );
 }
+
+/** Pedido ainda válido (não usado e não expirado) para o hash do token, ou null. */
+export async function findValido(tokenHash, db = pool) {
+  const { rows } = await db.query(
+    `SELECT id, usuario_id FROM recuperacoes_senha
+      WHERE token_hash = $1 AND usado_em IS NULL AND expira_em > now()`,
+    [tokenHash],
+  );
+  return rows[0] ?? null;
+}
+
+export async function marcarUsado(id, db = pool) {
+  await db.query('UPDATE recuperacoes_senha SET usado_em = now() WHERE id = $1', [id]);
+}

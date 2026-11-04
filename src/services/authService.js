@@ -3,6 +3,8 @@ import { withTransaction } from '@/lib/db';
 import { AppError } from '@/lib/errors';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { signSession } from '@/lib/auth';
+import { enviarEmail } from '@/lib/email';
+import { getEnv } from '@/lib/env';
 import * as usuariosRepo from '@/repositories/usuariosRepository';
 import * as vinculosRepo from '@/repositories/vinculosRepository';
 import * as condominiosRepo from '@/repositories/condominiosRepository';
@@ -128,16 +130,15 @@ export async function login({ tipo, valor, senha }, { ip } = {}) {
 }
 
 /**
- * Gera um token de redefinição de senha (guardado como SHA-256).
+ * Gera um token de redefinição de senha (guardado como SHA-256) e envia o link por e-mail.
  * Sempre termina sem erro para não revelar se o e-mail existe.
- * TODO: enviar o link `${APP_URL}/redefinir-senha?token=...` por e-mail.
  */
 export async function requestPasswordReset({ email }) {
   const usuario = await usuariosRepo.findByEmail(email);
   if (!usuario || !usuario.ativo) return;
 
   const token = randomBytes(32).toString('base64url');
-  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const tokenHash = hashToken(token);
 
   await withTransaction(async (client) => {
     await recuperacoesRepo.invalidarPendentes(usuario.id, client);
@@ -146,4 +147,33 @@ export async function requestPasswordReset({ email }) {
       client,
     );
   });
+
+  const link = `${getEnv().APP_URL}/redefinir-senha?token=${token}`;
+  await enviarEmail({
+    para: usuario.email,
+    assunto: 'CondoSync — redefinição de senha',
+    texto:
+      `Olá, ${usuario.nome_completo}.\n\n` +
+      `Recebemos um pedido para redefinir a sua senha no CondoSync.\n` +
+      `Use o link abaixo em até 1 hora:\n\n${link}\n\n` +
+      'Se você não fez esse pedido, ignore este e-mail: sua senha continua a mesma.',
+  });
+}
+
+/** Troca a senha a partir de um token válido; o token só pode ser usado uma vez. */
+export async function resetPassword({ token, senha }) {
+  const pedido = await recuperacoesRepo.findValido(hashToken(token));
+  if (!pedido) {
+    throw new AppError(400, 'Este link de redefinição é inválido ou expirou. Solicite um novo.');
+  }
+  const senhaHash = await hashPassword(senha);
+  await withTransaction(async (client) => {
+    await usuariosRepo.atualizarSenha(pedido.usuario_id, senhaHash, client);
+    await recuperacoesRepo.marcarUsado(pedido.id, client);
+    await recuperacoesRepo.invalidarPendentes(pedido.usuario_id, client);
+  });
+}
+
+function hashToken(token) {
+  return createHash('sha256').update(token).digest('hex');
 }

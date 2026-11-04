@@ -105,3 +105,8 @@ export const loginSchema = z
 export const forgotPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email('E-mail inválido.').max(254),
 });
+
+export const resetPasswordSchema = z.object({
+  token: z.string({ error: 'Link inválido.' }).min(20, 'Link inválido.').max(200, 'Link inválido.'),
+  senha: senhaForteSchema,
+});

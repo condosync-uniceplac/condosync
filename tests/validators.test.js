@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { cpfSchema, loginSchema, registerSchema, senhaForteSchema } from '@/lib/validators';
+import {
+  cpfSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+  senhaForteSchema,
+} from '@/lib/validators';
 
 describe('cpfSchema', () => {
   it('aceita CPF com ou sem máscara e normaliza para 11 dígitos', () => {
@@ -87,5 +93,22 @@ describe('registerSchema (versão 2)', () => {
 
   it('exige aceite dos termos', () => {
     expect(registerSchema.safeParse({ ...base, aceiteTermos: false }).success).toBe(false);
+  });
+});
+
+describe('resetPasswordSchema (RF.07)', () => {
+  const token = 'x'.repeat(43);
+
+  it('aceita token e senha forte', () => {
+    expect(resetPasswordSchema.safeParse({ token, senha: 'Nova@2026' }).success).toBe(true);
+  });
+
+  it('rejeita senha fraca (RN.03)', () => {
+    expect(resetPasswordSchema.safeParse({ token, senha: 'fraca' }).success).toBe(false);
+  });
+
+  it('rejeita token ausente ou curto', () => {
+    expect(resetPasswordSchema.safeParse({ senha: 'Nova@2026' }).success).toBe(false);
+    expect(resetPasswordSchema.safeParse({ token: 'abc', senha: 'Nova@2026' }).success).toBe(false);
   });
 });

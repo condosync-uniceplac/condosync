@@ -40,3 +40,10 @@ export async function create(u, db = pool) {
   );
   return rows[0];
 }
+
+export async function atualizarSenha(id, senhaHash, db = pool) {
+  await db.query('UPDATE usuarios SET senha_hash = $2, atualizado_em = now() WHERE id = $1', [
+    id,
+    senhaHash,
+  ]);
+}
