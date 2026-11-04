@@ -20,7 +20,7 @@ export default function LoginForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cpf: form.get('cpf'),
+          identificador: form.get('identificador'),
           senha: form.get('senha'),
         }),
       });
@@ -48,13 +48,12 @@ export default function LoginForm() {
         </p>
       )}
       <div className={styles.field}>
-        <label htmlFor="cpf">CPF</label>
+        <label htmlFor="identificador">E-mail ou CPF</label>
         <input
-          id="cpf"
-          name="cpf"
-          inputMode="numeric"
-          placeholder="000.000.000-00"
-          maxLength={14}
+          id="identificador"
+          name="identificador"
+          placeholder="seu@email.com ou 000.000.000-00"
+          maxLength={254}
           autoComplete="username"
           required
         />

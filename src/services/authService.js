@@ -8,14 +8,17 @@ import * as vinculosRepo from '@/repositories/vinculosRepository';
 import * as condominiosRepo from '@/repositories/condominiosRepository';
 import * as termosRepo from '@/repositories/termosRepository';
 import * as recuperacoesRepo from '@/repositories/recuperacoesSenhaRepository';
+import * as tentativasRepo from '@/repositories/tentativasLoginRepository';
 
-const LOGIN_INVALIDO = 'CPF ou senha inválidos.';
+const LOGIN_INVALIDO = 'Credenciais inválidas.';
+const MAX_TENTATIVAS = 5;
+const JANELA_TENTATIVAS_MIN = 15;
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hora
 
 /**
  * Cadastro de usuário + vínculo com o condomínio + aceite dos termos vigentes.
- * Vínculos de PORTARIA/SINDICO nascem inativos e precisam ser liberados pela
- * administração (evita alguém se autodeclarar síndico).
+ * Todo vínculo nasce pendente (inativo) e precisa ser aprovado pelo síndico,
+ * inclusive o de morador (versão 2: evita acesso de quem não é do condomínio).
  */
 export async function register(data, { ip } = {}) {
   let condominioId = data.condominioId;
@@ -48,7 +51,7 @@ export async function register(data, { ip } = {}) {
           condominioId,
           perfil: data.perfil,
           unidadeId,
-          ativo: data.perfil === 'MORADOR',
+          ativo: false,
         },
         client,
       );
@@ -74,20 +77,35 @@ export async function register(data, { ip } = {}) {
   }
 }
 
-/** Login por CPF (já normalizado para 11 dígitos pelo loginSchema). */
-export async function login({ cpf, senha }) {
-  const usuario = await usuariosRepo.findForLogin(cpf);
+/**
+ * Login por e-mail ou CPF ({ tipo, valor } já normalizados pelo loginSchema).
+ * Após MAX_TENTATIVAS falhas na janela de tempo, o identificador fica bloqueado
+ * temporariamente (mesma resposta exista ou não a conta).
+ */
+export async function login({ tipo, valor, senha }, { ip } = {}) {
+  const identificador = `${tipo}:${valor}`;
+  const falhas = await tentativasRepo.contarFalhasRecentes(identificador, JANELA_TENTATIVAS_MIN);
+  if (falhas >= MAX_TENTATIVAS) {
+    throw new AppError(
+      429,
+      `Muitas tentativas de acesso. Tente novamente em ${JANELA_TENTATIVAS_MIN} minutos.`,
+    );
+  }
+
+  const usuario = await usuariosRepo.findForLogin({ tipo, valor });
   // Sempre roda o bcrypt (mesmo sem usuário) para não revelar cadastros pelo tempo de resposta
   const senhaOk = await verifyPassword(senha, usuario?.senha_hash);
 
   if (!usuario || !senhaOk || !usuario.ativo) {
+    await tentativasRepo.registrarFalha(identificador, ip);
     throw new AppError(401, LOGIN_INVALIDO);
   }
+  await tentativasRepo.limpar(identificador);
 
   const [vinculo] = await vinculosRepo.listAtivosByUsuario(usuario.id);
   if (!vinculo) {
     // Credenciais já conferidas: aqui é seguro ser específico
-    throw new AppError(403, 'Seu acesso ainda não foi liberado pela administração do condomínio.');
+    throw new AppError(403, 'Seu cadastro ainda está aguardando a aprovação do síndico.');
   }
 
   const sessao = {

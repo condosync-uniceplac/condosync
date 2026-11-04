@@ -92,7 +92,6 @@ Table "usuarios" {
   "email" citext [unique, not null]
   "telefone" varchar(20) [not null]
   "cpf" char(11) [unique, not null, check: `cpf ~ '^\d{11}$'`]
-  "rg" varchar(20)
   "data_nascimento" date [not null, check: `data_nascimento <= current_date`]
   "senha_hash" text [not null]
   "ativo" boolean [not null, default: true]

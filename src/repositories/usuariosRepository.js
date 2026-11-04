@@ -4,13 +4,15 @@ import { query } from '@/lib/db';
 const pool = { query };
 
 const COLUNAS_PUBLICAS =
-  'id, nome_completo, email, telefone, cpf, rg, data_nascimento, ativo, criado_em';
+  'id, nome_completo, email, telefone, cpf, data_nascimento, ativo, criado_em';
 
 /** Busca para autenticação (inclui senha_hash — nunca devolver isso ao cliente). */
-export async function findForLogin(cpf, db = pool) {
+/** Busca para login por e-mail ou CPF (`tipo` vem do loginSchema). */
+export async function findForLogin({ tipo, valor }, db = pool) {
+  const coluna = tipo === 'email' ? 'email' : 'cpf';
   const { rows } = await db.query(
-    'SELECT id, nome_completo, email, ativo, senha_hash FROM usuarios WHERE cpf = $1',
-    [cpf],
+    `SELECT id, nome_completo, email, ativo, senha_hash FROM usuarios WHERE ${coluna} = $1`,
+    [valor],
   );
   return rows[0] ?? null;
 }
@@ -31,10 +33,10 @@ export async function findByEmail(email, db = pool) {
 
 export async function create(u, db = pool) {
   const { rows } = await db.query(
-    `INSERT INTO usuarios (nome_completo, email, telefone, cpf, rg, data_nascimento, senha_hash)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO usuarios (nome_completo, email, telefone, cpf, data_nascimento, senha_hash)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING ${COLUNAS_PUBLICAS}`,
-    [u.nome, u.email, u.telefone, u.cpf, u.rg, u.dataNascimento, u.senhaHash],
+    [u.nome, u.email, u.telefone, u.cpf, u.dataNascimento, u.senhaHash],
   );
   return rows[0];
 }
