@@ -22,12 +22,12 @@ JOIN condominios c ON c.id = b.condominio_id AND c.cnpj = '12345678000190'
 CROSS JOIN (VALUES ('101'), ('102'), ('201'), ('202')) AS u (numero);
 
 -- Usuários (um por perfil) -------------------------------------
-INSERT INTO usuarios (nome_completo, email, telefone, cpf, rg, data_nascimento, senha_hash) VALUES
-  ('Maria Moradora',  'morador@condosync.dev',  '11990000001', '11144477735', '123456789', '1990-05-10',
+INSERT INTO usuarios (nome_completo, email, telefone, cpf, data_nascimento, senha_hash) VALUES
+  ('Maria Moradora',  'morador@condosync.dev',  '11990000001', '11144477735', '1990-05-10',
    '$2b$10$H3O3fOzomoH.D1PT/0JBle4GrNNpr3LuDNARXrUbGgwsFTK/25jNy'),
-  ('Paulo Portaria',  'portaria@condosync.dev', '11990000002', '22255588846', '234567890', '1985-08-20',
+  ('Paulo Portaria',  'portaria@condosync.dev', '11990000002', '22255588846', '1985-08-20',
    '$2b$10$H3O3fOzomoH.D1PT/0JBle4GrNNpr3LuDNARXrUbGgwsFTK/25jNy'),
-  ('Sandra Síndica',  'sindico@condosync.dev',  '11990000003', '33366699957', '345678901', '1978-02-15',
+  ('Sandra Síndica',  'sindico@condosync.dev',  '11990000003', '33366699957', '1978-02-15',
    '$2b$10$H3O3fOzomoH.D1PT/0JBle4GrNNpr3LuDNARXrUbGgwsFTK/25jNy');
 
 INSERT INTO vinculos_condominio (usuario_id, condominio_id, perfil, unidade_id)
