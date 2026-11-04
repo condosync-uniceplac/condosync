@@ -131,6 +131,8 @@ Termos de Uso/Política de Privacidade provisórios (`1.0-dev`).
 | POST   | `/api/auth/login`           | `{ identificador, senha }` (e-mail ou CPF) → cookie de sessão |
 | POST   | `/api/auth/logout`          | Remove o cookie (`204`)                                       |
 | POST   | `/api/auth/forgot-password` | `{ email }` → `202` sempre (não revela se o e-mail existe)    |
+| GET    | `/api/admin/cadastros`      | Síndico: cadastros pendentes do condomínio                    |
+| POST   | `/api/admin/cadastros/:id`  | Síndico: `{ acao: 'aprovar' \| 'recusar' }`                   |
 | GET    | `/api/auth/me`              | Dados da sessão atual                                         |
 
 Exemplo de cadastro:
@@ -224,7 +226,7 @@ Depois de adicionar uma dependência ao `package.json`, rode
 | `migrate` termina com erro                                        | Veja `docker compose logs migrate`. Se o banco ficou inconsistente em dev, rode `docker compose down -v` e suba de novo.                                                                                    |
 | Mudanças no código não recarregam                                 | O compose já ativa _polling_ (`WATCHPACK_POLLING`). Em pastas sincronizadas (OneDrive/Dropbox), prefira manter o projeto fora delas.                                                                        |
 | `/api/health` responde `503`                                      | O banco está inacessível: confira `DATABASE_URL`/`DB_SSL` e `docker compose ps`.                                                                                                                            |
-| Login responde `403` "aguardando a aprovação do síndico"          | Todo vínculo criado pelo cadastro nasce pendente (ver decisões). Em dev: `UPDATE vinculos_condominio SET ativo = true WHERE id = ...;`                                                                      |
+| Login responde `403` "aguardando a aprovação do síndico"          | Todo vínculo criado pelo cadastro nasce pendente (ver decisões). Entre como síndico e aprove em **Administração** (`/admin`).                                                                               |
 | `failed to copy ... cloudfront.docker.com: EOF` ao baixar imagens | A rede bloqueia o CDN do Docker Hub. Use um espelho: `docker pull mirror.gcr.io/library/node:20-alpine && docker tag mirror.gcr.io/library/node:20-alpine node:20-alpine` (idem para `postgres:16-alpine`). |
 | `wait-for-db.sh: not found` / `\r` no Linux                       | Arquivo salvo com CRLF. O `.gitattributes` força LF; rode `git add --renormalize .`.                                                                                                                        |
 
