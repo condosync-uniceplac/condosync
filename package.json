@@ -14,7 +14,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "node scripts/migrate.js",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.4.1",
@@ -46,6 +48,7 @@
     "eslint-config-prettier": "^9.1.0",
     "postcss": "^8.5.32",
     "prettier": "^3.9.10",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "vitest": "^3.2.7"
   }
 }
