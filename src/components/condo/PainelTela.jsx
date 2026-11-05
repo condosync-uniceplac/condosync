@@ -9,6 +9,7 @@ import {
   DoorOpen,
   Megaphone,
   Users,
+  Vote,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
@@ -90,6 +91,10 @@ export default function Painel() {
         </Button>
         <Button className="rounded-xl" onClick={() => router.push('/chamados')}>
           <ClipboardList className="h-4 w-4" /> Registrar Ocorrência
+        </Button>
+        <Button className="rounded-xl" onClick={() => router.push('/enquetes')}>
+          <Vote className="h-4 w-4" />{' '}
+          {estado.sessao?.perfil === 'sindico' ? 'Nova Enquete' : 'Votar em Enquetes'}
         </Button>
       </div>
 
