@@ -110,3 +110,7 @@ export const resetPasswordSchema = z.object({
   token: z.string({ error: 'Link inválido.' }).min(20, 'Link inválido.').max(200, 'Link inválido.'),
   senha: senhaForteSchema,
 });
+
+export const resetTokenSchema = z.object({
+  token: z.string({ error: 'Link inválido.' }).min(20, 'Link inválido.').max(200, 'Link inválido.'),
+});
