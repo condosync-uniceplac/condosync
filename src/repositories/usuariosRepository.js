@@ -47,3 +47,9 @@ export async function atualizarSenha(id, senhaHash, db = pool) {
     senhaHash,
   ]);
 }
+
+/** Hash da senha atual (uso interno do servidor — nunca devolver ao cliente). */
+export async function findSenhaHash(id, db = pool) {
+  const { rows } = await db.query('SELECT senha_hash FROM usuarios WHERE id = $1', [id]);
+  return rows[0]?.senha_hash ?? null;
+}

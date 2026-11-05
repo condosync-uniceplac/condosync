@@ -166,6 +166,12 @@ export async function resetPassword({ token, senha }) {
   if (!pedido) {
     throw new AppError(400, 'Este link de redefinição é inválido ou expirou. Solicite um novo.');
   }
+  const senhaAtual = await usuariosRepo.findSenhaHash(pedido.usuario_id);
+  if (senhaAtual && (await verifyPassword(senha, senhaAtual))) {
+    throw new AppError(422, 'Dados inválidos.', {
+      senha: 'A nova senha deve ser diferente da senha atual.',
+    });
+  }
   const senhaHash = await hashPassword(senha);
   await withTransaction(async (client) => {
     await usuariosRepo.atualizarSenha(pedido.usuario_id, senhaHash, client);
