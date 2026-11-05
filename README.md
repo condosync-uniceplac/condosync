@@ -131,6 +131,7 @@ Termos de Uso/Política de Privacidade provisórios (`1.0-dev`).
 | POST   | `/api/auth/login`           | `{ identificador, senha }` (e-mail ou CPF) → cookie de sessão |
 | POST   | `/api/auth/logout`          | Remove o cookie (`204`)                                       |
 | POST   | `/api/auth/forgot-password` | `{ email }` → `202` sempre (não revela se o e-mail existe)    |
+| POST   | `/api/auth/reset-password`  | `{ token, senha }` → troca a senha; token de uso único (1 h)  |
 | GET    | `/api/admin/cadastros`      | Síndico: cadastros pendentes do condomínio                    |
 | POST   | `/api/admin/cadastros/:id`  | Síndico: `{ acao: 'aprovar' \| 'recusar' }`                   |
 | GET    | `/api/auth/me`              | Dados da sessão atual                                         |
@@ -265,8 +266,10 @@ Depois de adicionar uma dependência ao `package.json`, rode
 - **Cadastro duplicado.** E-mail ou CPF repetido responde `409`. Isso permite descobrir se um e-mail já
   está cadastrado, um custo aceito em troca de uma mensagem útil no cadastro.
 - **Recuperação de senha.** Gera um token aleatório, grava apenas o hash SHA-256 em `recuperacoes_senha`
-  com validade de 1 hora e invalida os pedidos anteriores. **O envio de e-mail e a tela de redefinição
-  ainda não existem (TODO).** O token não aparece em logs.
+  com validade de 1 hora, invalida os pedidos anteriores e envia o link `/redefinir-senha?token=...` por
+  e-mail. O token é de uso único. O envio usa a API da Resend quando `RESEND_API_KEY` e `EMAIL_FROM`
+  estão definidos; sem elas, em desenvolvimento o e-mail aparece no console do servidor e, em produção,
+  não é enviado (o token nunca vai para os logs de produção).
 - **Validação de CPF.** Confere os 11 dígitos, rejeita sequências repetidas e valida os dígitos
   verificadores (`src/lib/validators.js`).
 - **Minimização de dados (versão 2).** O RG foi removido do cadastro e do banco (migration `002`).
