@@ -2,12 +2,24 @@ import { z } from 'zod';
 
 const onlyDigits = (v) => (typeof v === 'string' ? v.replace(/\D/g, '') : v);
 
+/** Confere os dois dígitos verificadores do CPF (algoritmo da Receita Federal). */
+export function cpfDigitosValidos(cpf) {
+  const d = cpf.split('').map(Number);
+  const dv = (n) => {
+    let soma = 0;
+    for (let i = 0; i < n; i += 1) soma += d[i] * (n + 1 - i);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+  return dv(9) === d[9] && dv(10) === d[10];
+}
+
 export const cpfSchema = z.preprocess(
   onlyDigits,
   z
     .string({ error: 'CPF obrigatório.' })
     .regex(/^\d{11}$/, 'CPF deve ter 11 dígitos.')
-    .refine((v) => !/^(\d)\1{10}$/.test(v), 'CPF inválido.'),
+    .refine((v) => !/^(\d)\1{10}$/.test(v) && cpfDigitosValidos(v), 'CPF inválido.'),
 );
 
 export const senhaForteSchema = z
@@ -33,7 +45,6 @@ export const registerSchema = z
       z.string().regex(/^\d{10,11}$/, 'Telefone deve ter DDD + número (10 ou 11 dígitos).'),
     ),
     cpf: cpfSchema,
-    rg: z.string().trim().min(4, 'RG inválido.').max(20, 'RG inválido.'),
     dataNascimento: z.iso
       .date('Data de nascimento inválida (use AAAA-MM-DD).')
       .refine((v) => v <= new Date().toISOString().slice(0, 10), 'Data de nascimento no futuro.'),
@@ -59,11 +70,37 @@ export const registerSchema = z
     }
   });
 
-export const loginSchema = z.object({
-  // CPF com ou sem máscara (000.000.000-00)
-  cpf: cpfSchema,
-  senha: z.string().min(1, 'Informe a senha.').max(72),
-});
+const emailSchema = z.string().trim().toLowerCase().email().max(254);
+
+/**
+ * Login por e-mail OU CPF (com ou sem máscara).
+ * Resultado: { tipo: 'email' | 'cpf', valor, senha }.
+ * A mensagem de erro é genérica para não indicar qual formato falhou.
+ */
+export const loginSchema = z
+  .object({
+    identificador: z
+      .string({ error: 'Informe o e-mail ou CPF.' })
+      .trim()
+      .min(1, 'Informe o e-mail ou CPF.')
+      .max(254),
+    senha: z.string().min(1, 'Informe a senha.').max(72),
+  })
+  .transform((data, ctx) => {
+    if (data.identificador.includes('@')) {
+      const email = emailSchema.safeParse(data.identificador);
+      if (email.success) return { tipo: 'email', valor: email.data, senha: data.senha };
+    } else {
+      const cpf = cpfSchema.safeParse(data.identificador);
+      if (cpf.success) return { tipo: 'cpf', valor: cpf.data, senha: data.senha };
+    }
+    ctx.addIssue({
+      code: 'custom',
+      path: ['identificador'],
+      message: 'Informe um e-mail ou CPF válido.',
+    });
+    return z.NEVER;
+  });
 
 export const forgotPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email('E-mail inválido.').max(254),

@@ -110,7 +110,7 @@ Use servidor `db`, usuário e senha do `.env`.
 > ⚠️ **Apenas para desenvolvimento.** Essas contas são criadas pelo seed e as senhas estão publicadas
 > aqui. O `scripts/seed.js` se recusa a rodar com `NODE_ENV=production`.
 
-O login é feito **somente por CPF** (com ou sem máscara) + senha.
+O login aceita **e-mail ou CPF** (com ou sem máscara) + senha.
 
 | Perfil   | CPF (login)    | Senha        | E-mail                   |
 | -------- | -------------- | ------------ | ------------------------ |
@@ -128,7 +128,7 @@ Termos de Uso/Política de Privacidade provisórios (`1.0-dev`).
 | ------ | --------------------------- | ------------------------------------------------------------- |
 | GET    | `/api/health`               | `200` com o banco acessível, `503` caso contrário             |
 | POST   | `/api/auth/register`        | Cadastro (`201`); `422` validação, `409` e-mail/CPF duplicado |
-| POST   | `/api/auth/login`           | `{ cpf, senha }` (CPF com ou sem máscara) → cookie de sessão  |
+| POST   | `/api/auth/login`           | `{ identificador, senha }` (e-mail ou CPF) → cookie de sessão |
 | POST   | `/api/auth/logout`          | Remove o cookie (`204`)                                       |
 | POST   | `/api/auth/forgot-password` | `{ email }` → `202` sempre (não revela se o e-mail existe)    |
 | GET    | `/api/auth/me`              | Dados da sessão atual                                         |
@@ -138,7 +138,7 @@ Exemplo de cadastro:
 ```bash
 curl -X POST http://localhost:3000/api/auth/register -H "Content-Type: application/json" -d '{
   "nome": "João da Silva", "email": "joao@exemplo.com", "telefone": "(11) 98888-7777",
-  "cpf": "529.982.247-25", "rg": "112223334", "dataNascimento": "1995-01-01",
+  "cpf": "529.982.247-25", "dataNascimento": "1995-01-01",
   "senha": "Senha@123", "perfil": "MORADOR", "unidadeId": 1,
   "aceiteTermos": true, "aceitePrivacidade": true }'
 ```
@@ -224,7 +224,7 @@ Depois de adicionar uma dependência ao `package.json`, rode
 | `migrate` termina com erro                                        | Veja `docker compose logs migrate`. Se o banco ficou inconsistente em dev, rode `docker compose down -v` e suba de novo.                                                                                    |
 | Mudanças no código não recarregam                                 | O compose já ativa _polling_ (`WATCHPACK_POLLING`). Em pastas sincronizadas (OneDrive/Dropbox), prefira manter o projeto fora delas.                                                                        |
 | `/api/health` responde `503`                                      | O banco está inacessível: confira `DATABASE_URL`/`DB_SSL` e `docker compose ps`.                                                                                                                            |
-| Login responde `403` "acesso ainda não foi liberado"              | Vínculos de Portaria e Síndico criados pelo cadastro nascem inativos (ver decisões). Em dev: `UPDATE vinculos_condominio SET ativo = true WHERE id = ...;`                                                  |
+| Login responde `403` "aguardando a aprovação do síndico"          | Todo vínculo criado pelo cadastro nasce pendente (ver decisões). Em dev: `UPDATE vinculos_condominio SET ativo = true WHERE id = ...;`                                                                      |
 | `failed to copy ... cloudfront.docker.com: EOF` ao baixar imagens | A rede bloqueia o CDN do Docker Hub. Use um espelho: `docker pull mirror.gcr.io/library/node:20-alpine && docker tag mirror.gcr.io/library/node:20-alpine node:20-alpine` (idem para `postgres:16-alpine`). |
 | `wait-for-db.sh: not found` / `\r` no Linux                       | Arquivo salvo com CRLF. O `.gitattributes` força LF; rode `git add --renormalize .`.                                                                                                                        |
 
@@ -251,19 +251,23 @@ Depois de adicionar uma dependência ao `package.json`, rode
 - **Multi-condomínio.** Um usuário pode ter vários vínculos. O login escolhe o vínculo ativo de maior
   perfil (ADMIN > SÍNDICO > PORTARIA > MORADOR). Trocar de condomínio ou perfil fica para o módulo de conta.
 - **Autocadastro e perfis privilegiados.** Para ninguém se declarar síndico sozinho, o cadastro público
-  aceita Morador, Portaria e Síndico, mas os vínculos de Portaria e Síndico nascem com `ativo = false` e
-  precisam ser liberados pela administração. Moradores já entram ativos. ADMIN não pode ser criado pelo
-  cadastro.
+  aceita Morador, Portaria e Síndico, mas **todo vínculo nasce pendente** (`ativo = false`), inclusive o
+  de morador, e precisa ser aprovado pelo síndico (versão 2). ADMIN não pode ser criado pelo cadastro.
 - **Login com mensagem genérica.** Usuário inexistente, senha errada e usuário inativo recebem a mesma
-  resposta `401`, e o bcrypt roda mesmo sem usuário, para que o tempo de resposta não revele cadastros.
-  Só depois de a senha ser conferida o sistema informa que o acesso está pendente (`403`).
+  resposta `401` ("Credenciais inválidas."), e o bcrypt roda mesmo sem usuário, para que o tempo de
+  resposta não revele cadastros. Só depois de a senha ser conferida o sistema informa que o acesso está
+  pendente (`403`).
+- **Bloqueio por tentativas (versão 2).** Após 5 falhas em 15 minutos para o mesmo e-mail/CPF, o login
+  responde `429` até a janela expirar. As falhas ficam em `tentativas_login` e são apagadas no login
+  bem-sucedido.
 - **Cadastro duplicado.** E-mail ou CPF repetido responde `409`. Isso permite descobrir se um e-mail já
   está cadastrado, um custo aceito em troca de uma mensagem útil no cadastro.
 - **Recuperação de senha.** Gera um token aleatório, grava apenas o hash SHA-256 em `recuperacoes_senha`
   com validade de 1 hora e invalida os pedidos anteriores. **O envio de e-mail e a tela de redefinição
   ainda não existem (TODO).** O token não aparece em logs.
-- **Validação de CPF.** Por ora o sistema só confere se o CPF tem 11 dígitos e se não são todos iguais.
-  A verificação dos dígitos verificadores pode ser adicionada em `src/lib/validators.js`.
+- **Validação de CPF.** Confere os 11 dígitos, rejeita sequências repetidas e valida os dígitos
+  verificadores (`src/lib/validators.js`).
+- **Minimização de dados (versão 2).** O RG foi removido do cadastro e do banco (migration `002`).
 - **Condomínios e unidades públicos.** `GET /api/condominios` e `/api/condominios/:id/unidades` não
   exigem login, para alimentar o formulário de cadastro. Em produção, considerar um código de convite
   por condomínio.
@@ -286,4 +290,4 @@ feito no Lovable (React + Tailwind + shadcn/ui), convertidas para JavaScript e p
 - **Dados:** as telas ainda usam **dados de demonstração** guardados no navegador
   (`src/lib/condo-store.jsx`). Só o usuário logado (nome, perfil, unidade) vem do login real.
   Para integrar com o banco, troque as funções do store por chamadas às rotas `app/api/*`.
-- O login e o cadastro continuam os de CPF + senha com banco e sessão em cookie.
+- O login (e-mail ou CPF + senha) e o cadastro continuam com banco próprio e sessão em cookie.

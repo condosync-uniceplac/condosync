@@ -56,7 +56,6 @@ export default function RegisterForm() {
       email: f.get('email'),
       telefone: f.get('telefone'),
       cpf: f.get('cpf'),
-      rg: f.get('rg'),
       dataNascimento: f.get('dataNascimento'),
       senha: f.get('senha'),
       perfil,
@@ -89,9 +88,7 @@ export default function RegisterForm() {
     return (
       <div className={styles.form}>
         <p className={styles.success}>
-          {sucesso.acessoLiberado
-            ? 'Cadastro concluído! Você já pode entrar.'
-            : 'Cadastro concluído! Seu acesso será liberado após aprovação da administração.'}
+          Cadastro concluído! Seu acesso será liberado após a aprovação do síndico.
         </p>
         <Link className={styles.button} href="/login" style={{ textAlign: 'center' }}>
           Ir para o login
@@ -121,9 +118,6 @@ export default function RegisterForm() {
         </Field>
         <Field id="cpf" label="CPF" error={campos.cpf}>
           <input id="cpf" name="cpf" inputMode="numeric" placeholder="000.000.000-00" required />
-        </Field>
-        <Field id="rg" label="RG" error={campos.rg}>
-          <input id="rg" name="rg" required />
         </Field>
         <Field id="dataNascimento" label="Data de nascimento" error={campos.dataNascimento}>
           <input id="dataNascimento" name="dataNascimento" type="date" required />
