@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   UserCircle2,
   Vote,
+  UserCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LogoCondoSync } from '@/components/condo/Logo';
@@ -33,6 +34,7 @@ const NAVEGACAO = [
   { titulo: 'Mural de Avisos', url: '/avisos', icone: Megaphone },
   { titulo: 'Chamados', url: '/chamados', icone: ClipboardList },
   { titulo: 'Enquetes', url: '/enquetes', icone: Vote },
+  { titulo: 'Administração', url: '/admin', icone: UserCheck },
 ];
 export function AppLayout({ titulo, subtitulo, children }) {
   const { estado, usuario } = useCondo();
@@ -40,10 +42,13 @@ export function AppLayout({ titulo, subtitulo, children }) {
   const caminho = usePathname();
   const naoLidos = estado.avisos.filter((a) => !a.lido).length;
   if (!estado.sessao || !usuario) return null;
-  // Portaria só aparece para quem tem acesso (mesma regra do middleware/RBAC)
-  const itens = NAVEGACAO.filter(
-    (item) => item.url !== '/portaria' || estado.sessao.perfil !== 'morador',
-  );
+  // Itens só aparecem para quem tem acesso (mesma regra do middleware/RBAC)
+  const perfil = estado.sessao.perfil;
+  const itens = NAVEGACAO.filter((item) => {
+    if (item.url === '/portaria') return perfil !== 'morador';
+    if (item.url === '/admin') return perfil === 'sindico';
+    return true;
+  });
   const encerrar = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     toast.success('Sessão encerrada com sucesso');

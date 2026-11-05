@@ -1,14 +1,8 @@
-import { AppLayout } from '@/components/condo/AppLayout';
+import AprovacoesTela from '@/components/condo/AprovacoesTela';
 
 export const metadata = { title: 'Administração | CondoSync' };
 
-// Acesso: SINDICO, ADMIN (ver src/middleware/rbac.js)
+// Acesso: SINDICO, ADMIN (middleware + src/middleware/rbac.js; a API revalida o perfil)
 export default function AdminPage() {
-  return (
-    <AppLayout titulo="Administração" subtitulo="Gestão do condomínio">
-      <p>
-        Gestão do condomínio, aprovação de cadastros e cadastros de espaços — em desenvolvimento.
-      </p>
-    </AppLayout>
-  );
+  return <AprovacoesTela />;
 }

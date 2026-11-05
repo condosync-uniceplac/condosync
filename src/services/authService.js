@@ -105,7 +105,13 @@ export async function login({ tipo, valor, senha }, { ip } = {}) {
   const [vinculo] = await vinculosRepo.listAtivosByUsuario(usuario.id);
   if (!vinculo) {
     // Credenciais já conferidas: aqui é seguro ser específico
-    throw new AppError(403, 'Seu cadastro ainda está aguardando a aprovação do síndico.');
+    const pendente = await vinculosRepo.existePendente(usuario.id);
+    throw new AppError(
+      403,
+      pendente
+        ? 'Seu cadastro ainda está aguardando a aprovação do síndico.'
+        : 'Seu cadastro não foi aprovado. Procure a administração do condomínio.',
+    );
   }
 
   const sessao = {
