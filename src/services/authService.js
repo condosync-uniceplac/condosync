@@ -160,6 +160,11 @@ export async function requestPasswordReset({ email }) {
   });
 }
 
+/** Indica se o link de redefinição ainda pode ser usado (não usado e não expirado). */
+export async function isResetTokenValid({ token }) {
+  return Boolean(await recuperacoesRepo.findValido(hashToken(token)));
+}
+
 /** Troca a senha a partir de um token válido; o token só pode ser usado uma vez. */
 export async function resetPassword({ token, senha }) {
   const pedido = await recuperacoesRepo.findValido(hashToken(token));

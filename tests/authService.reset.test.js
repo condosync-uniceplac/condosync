@@ -53,3 +53,17 @@ describe('resetPassword (RF.07)', () => {
     });
   });
 });
+
+describe('isResetTokenValid (CT-28)', () => {
+  it('é falso para link já usado ou expirado', async () => {
+    recuperacoesRepo.findValido.mockResolvedValue(null);
+    const { isResetTokenValid } = await import('@/services/authService');
+    await expect(isResetTokenValid({ token })).resolves.toBe(false);
+  });
+
+  it('é verdadeiro para link válido', async () => {
+    recuperacoesRepo.findValido.mockResolvedValue({ id: 1, usuario_id: 5 });
+    const { isResetTokenValid } = await import('@/services/authService');
+    await expect(isResetTokenValid({ token })).resolves.toBe(true);
+  });
+});
