@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import PasswordChecklist from './PasswordChecklist';
 import styles from './AuthCard.module.css';
 
 export default function RedefinirSenhaForm() {
@@ -10,6 +11,9 @@ export default function RedefinirSenhaForm() {
   const [erro, setErro] = useState('');
   const [concluido, setConcluido] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [senhaDigitada, setSenhaDigitada] = useState('');
+  const [confirmacaoDigitada, setConfirmacaoDigitada] = useState('');
+  const senhasDiferentes = confirmacaoDigitada.length > 0 && confirmacaoDigitada !== senhaDigitada;
   // null = verificando; true/false = resultado da verificação do link
   const [linkValido, setLinkValido] = useState(token ? null : false);
 
@@ -97,7 +101,17 @@ export default function RedefinirSenhaForm() {
       )}
       <div className={styles.field}>
         <label htmlFor="senha">Nova senha</label>
-        <input id="senha" name="senha" type="password" autoComplete="new-password" required />
+        <input
+          id="senha"
+          name="senha"
+          type="password"
+          autoComplete="new-password"
+          value={senhaDigitada}
+          onChange={(e) => setSenhaDigitada(e.target.value)}
+          aria-describedby="senha-criterios"
+          required
+        />
+        <PasswordChecklist senha={senhaDigitada} id="senha-criterios" />
       </div>
       <div className={styles.field}>
         <label htmlFor="confirmacao">Confirme a nova senha</label>
@@ -106,12 +120,12 @@ export default function RedefinirSenhaForm() {
           name="confirmacao"
           type="password"
           autoComplete="new-password"
+          value={confirmacaoDigitada}
+          onChange={(e) => setConfirmacaoDigitada(e.target.value)}
           required
         />
+        {senhasDiferentes && <span className={styles.fieldError}>As senhas não conferem.</span>}
       </div>
-      <p className={styles.subtitle}>
-        Mínimo de 8 caracteres, com letra maiúscula, minúscula, número e caractere especial.
-      </p>
       <button className={styles.button} type="submit" disabled={enviando}>
         {enviando ? 'Salvando...' : 'Redefinir senha'}
       </button>

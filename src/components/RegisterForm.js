@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PasswordChecklist from './PasswordChecklist';
 import styles from './AuthCard.module.css';
+import { formatCpf, formatTelefone } from '@/lib/masks';
 
 const PERFIS = [
   { value: 'MORADOR', label: 'Morador' },
@@ -10,12 +12,20 @@ const PERFIS = [
   { value: 'SINDICO', label: 'Síndico' },
 ];
 
-function Field({ id, label, error, children }) {
+function Field({ id, label, error, hint, children }) {
   return (
     <div className={styles.field}>
       <label htmlFor={id}>{label}</label>
       {children}
-      {error && <span className={styles.fieldError}>{error}</span>}
+      {error ? (
+        <span className={styles.fieldError}>{error}</span>
+      ) : (
+        hint && (
+          <span className={styles.hint} id={`${id}-dica`}>
+            {hint}
+          </span>
+        )
+      )}
     </div>
   );
 }
@@ -29,6 +39,11 @@ export default function RegisterForm() {
   const [campos, setCampos] = useState({});
   const [sucesso, setSucesso] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [telefone, setTelefone] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmacao, setConfirmacao] = useState('');
+  const senhasDiferentes = confirmacao.length > 0 && confirmacao !== senha;
 
   useEffect(() => {
     fetch('/api/condominios')
@@ -49,6 +64,10 @@ export default function RegisterForm() {
     event.preventDefault();
     setErro('');
     setCampos({});
+    if (senha !== confirmacao) {
+      setCampos({ confirmacao: 'As senhas não conferem.' });
+      return;
+    }
     setEnviando(true);
     const f = new FormData(event.currentTarget);
     const payload = {
@@ -113,17 +132,74 @@ export default function RegisterForm() {
         <Field id="email" label="E-mail" error={campos.email}>
           <input id="email" name="email" type="email" autoComplete="email" required />
         </Field>
-        <Field id="telefone" label="Telefone" error={campos.telefone}>
-          <input id="telefone" name="telefone" type="tel" placeholder="(11) 99999-9999" required />
+        <Field
+          id="telefone"
+          label="Telefone"
+          error={campos.telefone}
+          hint="Com DDD. Ex.: (61) 99999-0000"
+        >
+          <input
+            id="telefone"
+            name="telefone"
+            type="tel"
+            inputMode="numeric"
+            placeholder="(61) 99999-0000"
+            autoComplete="tel"
+            value={telefone}
+            onChange={(e) => setTelefone(formatTelefone(e.target.value))}
+            aria-describedby="telefone-dica"
+            required
+          />
         </Field>
-        <Field id="cpf" label="CPF" error={campos.cpf}>
-          <input id="cpf" name="cpf" inputMode="numeric" placeholder="000.000.000-00" required />
+        <Field
+          id="cpf"
+          label="CPF"
+          error={campos.cpf}
+          hint="Digite só os números. Ex.: 000.000.000-00"
+        >
+          <input
+            id="cpf"
+            name="cpf"
+            inputMode="numeric"
+            placeholder="000.000.000-00"
+            value={cpf}
+            onChange={(e) => setCpf(formatCpf(e.target.value))}
+            aria-describedby="cpf-dica"
+            required
+          />
         </Field>
         <Field id="dataNascimento" label="Data de nascimento" error={campos.dataNascimento}>
           <input id="dataNascimento" name="dataNascimento" type="date" required />
         </Field>
-        <Field id="senha" label="Senha" error={campos.senha}>
-          <input id="senha" name="senha" type="password" autoComplete="new-password" required />
+        <div className={styles.field}>
+          <label htmlFor="senha">Senha</label>
+          <input
+            id="senha"
+            name="senha"
+            type="password"
+            autoComplete="new-password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            aria-describedby="senha-criterios"
+            required
+          />
+          {campos.senha && <span className={styles.fieldError}>{campos.senha}</span>}
+          <PasswordChecklist senha={senha} id="senha-criterios" />
+        </div>
+        <Field
+          id="confirmacao"
+          label="Confirme a senha"
+          error={campos.confirmacao || (senhasDiferentes ? 'As senhas não conferem.' : '')}
+        >
+          <input
+            id="confirmacao"
+            name="confirmacao"
+            type="password"
+            autoComplete="new-password"
+            value={confirmacao}
+            onChange={(e) => setConfirmacao(e.target.value)}
+            required
+          />
         </Field>
       </div>
 
