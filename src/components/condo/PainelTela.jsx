@@ -15,8 +15,14 @@ import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatarData, useCondo } from '@/lib/condo-store';
+import { useCondo } from '@/lib/condo-store';
+import { dataLocal, turnoDaReserva } from '@/lib/turnos';
+import { useReservas } from '@/lib/useReservas';
 import { cn } from '@/lib/utils';
+const formatarData = (iso) => {
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+};
 const CORES_PRIORIDADE = {
   Urgente: 'bg-destructive/10 text-destructive',
   Manutenção: 'bg-warning/15 text-warning-foreground',
@@ -25,15 +31,19 @@ const CORES_PRIORIDADE = {
 export default function Painel() {
   const { estado, usuario, marcarLido } = useCondo();
   const router = useRouter();
-  const proxima = [...estado.reservas].sort((a, b) => a.data.localeCompare(b.data))[0];
+  const { reservas, podeReservar } = useReservas();
+  const minhas = podeReservar ? reservas.filter((r) => r.minha) : reservas;
+  const proxima = minhas[0];
   const esperados = estado.visitantes.filter((v) => v.status === 'aguardando').length;
   const naoLidos = estado.avisos.filter((a) => !a.lido).length;
   const abertos = estado.chamados.filter((c) => c.status !== 'resolvido').length;
   const indicadores = [
     {
       titulo: 'Próxima Reserva Agendada',
-      valor: proxima ? formatarData(proxima.data) : 'Nenhuma',
-      detalhe: proxima ? `${proxima.espaco} · ${proxima.turno}` : 'Nenhuma reserva ativa',
+      valor: proxima ? formatarData(dataLocal(proxima.inicio)) : 'Nenhuma',
+      detalhe: proxima
+        ? `${proxima.espaco} · ${turnoDaReserva(proxima.inicio, proxima.fim)?.rotulo ?? ''}`
+        : 'Nenhuma reserva ativa',
       icone: CalendarDays,
       cor: 'text-primary bg-accent',
     },
@@ -145,22 +155,23 @@ export default function Painel() {
           <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
             <h2 className="text-base font-bold text-foreground">Agenda dos espaços</h2>
             <div className="mt-4 space-y-3">
-              {[...estado.reservas]
-                .sort((a, b) => a.data.localeCompare(b.data))
-                .slice(0, 4)
-                .map((r) => (
-                  <div key={r.id} className="flex items-start gap-3">
-                    <span className="mt-1 flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-xs font-bold text-accent-foreground">
-                      {formatarData(r.data).slice(0, 5)}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{r.espaco}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {r.turno} · {r.unidade}
-                      </p>
-                    </div>
+              {reservas.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhuma reserva agendada.</p>
+              )}
+              {reservas.slice(0, 4).map((r) => (
+                <div key={r.id} className="flex items-start gap-3">
+                  <span className="mt-1 flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-xs font-bold text-accent-foreground">
+                    {formatarData(dataLocal(r.inicio)).slice(0, 5)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{r.espaco}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {turnoDaReserva(r.inicio, r.fim)?.rotulo}
+                      {r.unidade ? ` · ${r.unidade}` : ''}
+                    </p>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
           </section>
 
