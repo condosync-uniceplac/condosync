@@ -1,42 +1,6 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-export const ESPACOS = [
-  {
-    id: 'salao',
-    nome: 'Salão de Festas Nobre',
-    descricao: 'Ambiente climatizado com copa, som ambiente e mobiliário completo.',
-    capacidade: 120,
-    taxa: 'R$ 350,00',
-  },
-  {
-    id: 'churrasqueira',
-    nome: 'Churrasqueira Gourmet 01',
-    descricao: 'Espaço externo com bancada, forno de pizza e mesas para 30 pessoas.',
-    capacidade: 30,
-    taxa: 'R$ 120,00',
-  },
-  {
-    id: 'quadra',
-    nome: 'Quadra Poliesportiva',
-    descricao: 'Piso oficial, iluminação noturna e vestiários anexos.',
-    capacidade: 40,
-    taxa: 'Isento',
-  },
-  {
-    id: 'academia',
-    nome: 'Academia',
-    descricao: 'Equipamentos de musculação e área de alongamento com uso por turnos.',
-    capacidade: 12,
-    taxa: 'Isento',
-  },
-];
-export const TURNOS = [
-  'Manhã (08h às 12h)',
-  'Tarde (13h às 17h)',
-  'Noite (18h às 23h)',
-  'Dia inteiro (08h às 23h)',
-];
 const hoje = new Date();
 const iso = (deslocamentoDias) => {
   const d = new Date(hoje);
@@ -49,38 +13,6 @@ export const formatarData = (valor) => {
 };
 const estadoInicial = {
   sessao: null,
-  reservas: [
-    {
-      id: 'r1',
-      espacoId: 'salao',
-      espaco: 'Salão de Festas Nobre',
-      data: iso(3),
-      turno: 'Noite (18h às 23h)',
-      responsavel: 'Marcos Souza',
-      unidade: 'Apto 104 - Bloco B',
-      convidados: 45,
-    },
-    {
-      id: 'r2',
-      espacoId: 'churrasqueira',
-      espaco: 'Churrasqueira Gourmet 01',
-      data: iso(1),
-      turno: 'Tarde (13h às 17h)',
-      responsavel: 'Fernanda Lima Barreto',
-      unidade: 'Apto 302 - Bloco A',
-      convidados: 18,
-    },
-    {
-      id: 'r3',
-      espacoId: 'quadra',
-      espaco: 'Quadra Poliesportiva',
-      data: iso(5),
-      turno: 'Manhã (08h às 12h)',
-      responsavel: 'Marcos Souza',
-      unidade: 'Apto 104 - Bloco B',
-      convidados: 10,
-    },
-  ],
   visitantes: [
     {
       id: 'v1',
@@ -229,6 +161,7 @@ const estadoInicial = {
 const CondoContext = createContext(null);
 const CHAVE = 'condosync-estado';
 // `sessao` e `usuario` vêm do login real (servidor); o restante são dados de demonstração.
+// Reservas já vêm do banco (useReservas); os demais módulos serão migrados nas próximas sprints.
 export function CondoProvider({ children, sessao, usuario }) {
   const [estado, setEstado] = useState({ ...estadoInicial, sessao });
   useEffect(() => {
@@ -248,34 +181,6 @@ export function CondoProvider({ children, sessao, usuario }) {
   }, [estado]);
   const horaAgora = () =>
     new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const criarReserva = useCallback((dados) => {
-    let resultado = { ok: true, mensagem: 'Reserva confirmada com sucesso!' };
-    setEstado((e) => {
-      const conflito = e.reservas.some(
-        (r) =>
-          r.espacoId === dados.espacoId &&
-          r.data === dados.data &&
-          (r.turno === dados.turno ||
-            r.turno.startsWith('Dia inteiro') ||
-            dados.turno.startsWith('Dia inteiro')),
-      );
-      if (conflito) {
-        resultado = {
-          ok: false,
-          mensagem: 'Já existe uma reserva para este espaço nesta data e turno.',
-        };
-        return e;
-      }
-      return {
-        ...e,
-        reservas: [{ ...dados, id: crypto.randomUUID() }, ...e.reservas],
-      };
-    });
-    return resultado;
-  }, []);
-  const cancelarReserva = useCallback((id) => {
-    setEstado((e) => ({ ...e, reservas: e.reservas.filter((r) => r.id !== id) }));
-  }, []);
   const criarVisitante = useCallback((dados) => {
     setEstado((e) => ({
       ...e,
@@ -352,8 +257,6 @@ export function CondoProvider({ children, sessao, usuario }) {
     () => ({
       estado,
       usuario,
-      criarReserva,
-      cancelarReserva,
       criarVisitante,
       atualizarVisitante,
       gerarPasse,
@@ -365,8 +268,6 @@ export function CondoProvider({ children, sessao, usuario }) {
     [
       estado,
       usuario,
-      criarReserva,
-      cancelarReserva,
       criarVisitante,
       atualizarVisitante,
       gerarPasse,

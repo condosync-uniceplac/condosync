@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TURNO_IDS } from './turnos';
 
 const onlyDigits = (v) => (typeof v === 'string' ? v.replace(/\D/g, '') : v);
 
@@ -113,4 +114,17 @@ export const resetPasswordSchema = z.object({
 
 export const resetTokenSchema = z.object({
   token: z.string({ error: 'Link inválido.' }).min(20, 'Link inválido.').max(200, 'Link inválido.'),
+});
+
+// RF.09 — nova reserva de área comum
+export const reservaSchema = z.object({
+  espacoId: z.coerce.number({ error: 'Escolha um espaço.' }).int().positive('Escolha um espaço.'),
+  data: z
+    .string({ error: 'Escolha a data da reserva.' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Escolha a data da reserva.'),
+  turno: z.enum(TURNO_IDS, { error: 'Escolha um turno.' }),
+  convidados: z.coerce
+    .number({ error: 'Informe o número de convidados.' })
+    .int('Informe um número inteiro.')
+    .min(1, 'Informe ao menos 1 convidado.'),
 });
