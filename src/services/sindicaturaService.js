@@ -63,3 +63,23 @@ export async function designar(session, vinculoId) {
     };
   });
 }
+
+/**
+ * Retira a função do síndico atual (só o Administrador). O condomínio fica sem síndico
+ * até uma nova designação; enquanto isso, o Administrador aprova os cadastros.
+ */
+export async function retirar(session) {
+  if (session.perfil !== 'ADMIN') {
+    throw new AppError(403, 'Apenas o administrador pode retirar a função de síndico.');
+  }
+  return withTransaction(async (db) => {
+    const atual = await vinculosRepo.findSindicoAtivo(session.condominioId, db);
+    if (!atual) throw new AppError(404, 'O condomínio não tem síndico no momento.');
+    await vinculosRepo.alterarPapel(
+      atual.id,
+      atual.unidade_id ? { perfil: 'MORADOR', ativo: true } : { perfil: 'SINDICO', ativo: false },
+      db,
+    );
+    return { exSindico: atual.nome_completo, voltouAMorador: Boolean(atual.unidade_id) };
+  });
+}

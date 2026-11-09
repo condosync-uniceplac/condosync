@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Loader2 } from 'lucide-react';
+import { Crown, Loader2, UserMinus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { SELECT_CLASSE } from '@/components/condo/campos-visitante';
@@ -60,17 +60,53 @@ export function SindicaturaCard() {
     }
   };
 
+  const retirarFuncao = async () => {
+    if (
+      !window.confirm(
+        `Retirar a função de síndico de ${dados.sindico.nome}? O condomínio ficará sem síndico até uma nova designação.`,
+      )
+    )
+      return;
+    setEnviando(true);
+    try {
+      const r = await lerResposta(await fetch('/api/admin/sindicatura', { method: 'DELETE' }));
+      toast.success(
+        r.voltouAMorador
+          ? `${r.exSindico} deixou de ser síndico e voltou a ser morador.`
+          : `${r.exSindico} deixou de ser síndico e perdeu o acesso (sem unidade vinculada).`,
+      );
+      await carregar();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   return (
     <section className="mb-5 rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center gap-2">
         <Crown className="h-5 w-5 text-primary" />
         <h2 className="text-base font-bold text-foreground">Síndico do condomínio</h2>
       </div>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {dados.sindico
-          ? `Atual: ${dados.sindico.nome}${dados.sindico.unidade ? ` (${dados.sindico.unidade})` : ''}`
-          : 'O condomínio ainda não tem síndico designado.'}
-      </p>
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <p className="text-sm text-muted-foreground">
+          {dados.sindico
+            ? `Atual: ${dados.sindico.nome}${dados.sindico.unidade ? ` (${dados.sindico.unidade})` : ''}`
+            : 'O condomínio está sem síndico no momento.'}
+        </p>
+        {ehAdmin && dados.sindico && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={retirarFuncao}
+            disabled={enviando}
+          >
+            <UserMinus className="h-3.5 w-3.5" /> Retirar função
+          </Button>
+        )}
+      </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {ehAdmin
           ? 'Escolha o morador eleito. Quem deixa a função volta a ser morador da sua unidade.'
@@ -79,7 +115,7 @@ export function SindicaturaCard() {
 
       {dados.candidatos.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
-          Nenhum morador ativo ainda. O síndico é escolhido entre os moradores com cadastro
+          Nenhum outro morador ativo. O síndico é escolhido entre os moradores com cadastro
           aprovado.
         </p>
       ) : (
