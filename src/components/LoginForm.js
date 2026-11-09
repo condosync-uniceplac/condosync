@@ -41,8 +41,15 @@ export default function LoginForm() {
     }
   }
 
+  const sessaoExpirada = searchParams.get('sessao') === 'expirada';
+
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      {sessaoExpirada && !erro && (
+        <p className={styles.alert} role="status">
+          Seu perfil de acesso foi alterado. Entre novamente para continuar.
+        </p>
+      )}
       {erro && (
         <p className={styles.alert} role="alert">
           {erro}

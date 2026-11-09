@@ -89,6 +89,11 @@ describe('reservasService — criar (RF.09 / RN.12)', () => {
     });
   });
 
+  it('síndico que mora no condomínio também reserva', async () => {
+    await criar({ ...sindico, unidadeId: '101' }, pedido, agora);
+    expect(repo.create).toHaveBeenCalled();
+  });
+
   it('só moradores reservam', async () => {
     await expect(criar(sindico, pedido, agora)).rejects.toMatchObject({ status: 403 });
     await expect(criar(portaria, pedido, agora)).rejects.toMatchObject({ status: 403 });

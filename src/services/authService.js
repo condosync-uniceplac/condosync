@@ -124,6 +124,7 @@ export async function login({ tipo, valor, senha }, { ip } = {}) {
     condominioId: String(vinculo.condominio_id),
     condominioNome: vinculo.condominio_nome,
     unidadeId: vinculo.unidade_id ? String(vinculo.unidade_id) : null,
+    sv: vinculo.sessao_versao ?? 0,
   };
   const token = await signSession(sessao);
   return { token, usuario: { id: sessao.sub, nome: sessao.nome, perfil: sessao.perfil } };

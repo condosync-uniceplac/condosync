@@ -4,6 +4,7 @@ import { Check, UserCheck, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { SindicaturaCard } from '@/components/condo/SindicaturaCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -59,7 +60,11 @@ export default function AprovacoesTela() {
   }
 
   return (
-    <AppLayout titulo="Administração" subtitulo="Aprovação de novos cadastros do condomínio">
+    <AppLayout
+      titulo="Administração"
+      subtitulo="Síndico do condomínio e aprovação de novos cadastros"
+    >
+      <SindicaturaCard />
       <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
         <div className="flex items-center gap-2">
           <UserCheck className="h-5 w-5 text-primary" />

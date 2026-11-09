@@ -9,7 +9,6 @@ import { formatCpf, formatTelefone } from '@/lib/masks';
 const PERFIS = [
   { value: 'MORADOR', label: 'Morador' },
   { value: 'PORTARIA', label: 'Portaria' },
-  { value: 'SINDICO', label: 'Síndico' },
 ];
 
 function Field({ id, label, error, hint, children }) {

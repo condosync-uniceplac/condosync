@@ -35,7 +35,8 @@ export const senhaForteSchema = z
 const idSchema = z.coerce.number().int().positive();
 
 // Perfis que podem se cadastrar pela tela pública (ADMIN é criado só via banco)
-export const PERFIS_CADASTRO = ['MORADOR', 'PORTARIA', 'SINDICO'];
+// Síndico não se cadastra: é um morador designado pelo administrador ou pelo síndico anterior.
+export const PERFIS_CADASTRO = ['MORADOR', 'PORTARIA'];
 
 export const registerSchema = z
   .object({
