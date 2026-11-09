@@ -14,6 +14,10 @@ const GESTAO = ['SINDICO', 'ADMIN'];
 const VEEM_TODAS = ['SINDICO', 'ADMIN', 'PORTARIA'];
 const HORA_MS = 60 * 60 * 1000;
 
+/** Reserva quem mora no condomínio: morador ou síndico com unidade. */
+const podeReservar = (s) =>
+  s.perfil === 'MORADOR' || (s.perfil === 'SINDICO' && Boolean(s.unidadeId));
+
 const unidadeTexto = (r) =>
   r.unidade_numero ? `Apto ${r.unidade_numero} - Bloco ${r.bloco_nome}` : null;
 
@@ -42,7 +46,7 @@ export async function listar(session) {
     reservasRepo.listOcupacao(session.condominioId),
   ]);
   return {
-    podeReservar: session.perfil === 'MORADOR',
+    podeReservar: podeReservar(session),
     espacos: espacos.map((e) => ({
       id: Number(e.id),
       nome: e.nome,
@@ -60,7 +64,7 @@ export async function listar(session) {
 }
 
 export async function criar(session, { espacoId, data, turno, convidados }, agora = new Date()) {
-  if (session.perfil !== 'MORADOR') {
+  if (!podeReservar(session)) {
     throw new AppError(403, 'Apenas moradores podem reservar áreas comuns.');
   }
   const intervalo = intervaloDoTurno(data, turno);

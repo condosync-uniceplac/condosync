@@ -86,6 +86,11 @@ describe('registerSchema (versão 2)', () => {
     expect(registerSchema.safeParse(base).success).toBe(true);
   });
 
+  it('não permite se cadastrar como síndico ou administrador', () => {
+    expect(registerSchema.safeParse({ ...base, perfil: 'SINDICO' }).success).toBe(false);
+    expect(registerSchema.safeParse({ ...base, perfil: 'ADMIN' }).success).toBe(false);
+  });
+
   it('exige unidade para morador', () => {
     const { unidadeId: _u, ...semUnidade } = base;
     expect(registerSchema.safeParse(semUnidade).success).toBe(false);

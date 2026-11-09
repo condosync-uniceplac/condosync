@@ -166,6 +166,17 @@ npm run db:seed
 
 Rodar de novo é seguro: arquivos já aplicados são ignorados.
 
+### Conta de administrador (implantação)
+
+O síndico não se cadastra pelo site: ele é um morador designado pelo **Administrador** (conta raiz) ou pelo síndico anterior, em **Administração → Síndico do condomínio**. A conta de administrador é criada uma única vez:
+
+```bash
+DATABASE_URL=... npm run admin:criar -- --email admin@exemplo.com --nome "Administração" \
+  --cpf 15350946056 --telefone 61999990000 --nascimento 1990-01-01
+```
+
+A senha não é definida pelo comando: o administrador cria a dele em **Esqueci minha senha**.
+
 ## Produção com Supabase
 
 1. Crie um projeto em https://supabase.com.

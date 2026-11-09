@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/session';
+import { getSession, getValidSession } from '@/lib/session';
 import * as condominiosRepo from '@/repositories/condominiosRepository';
 import * as usuariosRepo from '@/repositories/usuariosRepository';
 import CondoShell from '@/components/condo/CondoShell';
@@ -11,12 +11,12 @@ const PERFIL_LABEL = {
   ADMIN: 'Administrador',
 };
 
-// As telas do painel têm visões por perfil; Administrador usa a visão do Síndico.
+// As telas do painel têm visões por perfil; o Administrador só vê a Administração.
 const PERFIL_TELA = {
   MORADOR: 'morador',
   PORTARIA: 'portaria',
   SINDICO: 'sindico',
-  ADMIN: 'sindico',
+  ADMIN: 'admin',
 };
 
 function iniciais(nome) {
@@ -27,16 +27,20 @@ function iniciais(nome) {
 }
 
 export default async function PainelLayout({ children }) {
-  const session = await getSession();
-  if (!session) redirect('/login');
+  const token = await getSession();
+  if (!token) redirect('/login');
+  // Perfil, unidade ou acesso alterados desde o login: encerra a sessão antiga
+  const session = await getValidSession();
+  if (!session) redirect('/api/auth/sessao-expirada');
 
   // "Cargo" exibido no topo: unidade para morador; nome do perfil para os demais.
   let cargo = PERFIL_LABEL[session.perfil];
   let email = '';
   try {
-    if (session.perfil === 'MORADOR' && session.unidadeId) {
+    if (session.unidadeId) {
       const unidade = await condominiosRepo.findUnidade(session.unidadeId);
-      if (unidade) cargo = `Apto ${unidade.numero} - ${unidade.bloco}`;
+      const apto = unidade ? `Apto ${unidade.numero} - ${unidade.bloco}` : null;
+      if (apto) cargo = session.perfil === 'MORADOR' ? apto : `${cargo} · ${apto}`;
     }
     const usuario = await usuariosRepo.findPublicById(session.sub);
     email = usuario?.email ?? '';

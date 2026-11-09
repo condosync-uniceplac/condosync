@@ -8,7 +8,7 @@ const pool = { query };
  */
 export async function listAtivosByUsuario(usuarioId, db = pool) {
   const { rows } = await db.query(
-    `SELECT v.id, v.condominio_id, v.perfil, v.unidade_id, c.nome AS condominio_nome
+    `SELECT v.id, v.condominio_id, v.perfil, v.unidade_id, v.sessao_versao, c.nome AS condominio_nome
        FROM vinculos_condominio v
        JOIN condominios c ON c.id = v.condominio_id
       WHERE v.usuario_id = $1 AND v.ativo
@@ -39,7 +39,7 @@ export async function listPendentesByCondominio(condominioId, db = pool) {
        JOIN usuarios u ON u.id = v.usuario_id
        LEFT JOIN unidades un ON un.id = v.unidade_id
        LEFT JOIN blocos b ON b.id = un.bloco_id
-      WHERE v.condominio_id = $1 AND NOT v.ativo
+      WHERE v.condominio_id = $1 AND NOT v.ativo AND v.encerrado_em IS NULL
       ORDER BY v.criado_em`,
     [condominioId],
   );
@@ -50,7 +50,7 @@ export async function listPendentesByCondominio(condominioId, db = pool) {
 export async function findPendente(id, condominioId, db = pool) {
   const { rows } = await db.query(
     `SELECT id, usuario_id, perfil FROM vinculos_condominio
-      WHERE id = $1 AND condominio_id = $2 AND NOT ativo`,
+      WHERE id = $1 AND condominio_id = $2 AND NOT ativo AND encerrado_em IS NULL`,
     [id, condominioId],
   );
   return rows[0] ?? null;
@@ -67,8 +67,76 @@ export async function remover(id, db = pool) {
 
 export async function existePendente(usuarioId, db = pool) {
   const { rows } = await db.query(
-    'SELECT 1 FROM vinculos_condominio WHERE usuario_id = $1 AND NOT ativo LIMIT 1',
+    'SELECT 1 FROM vinculos_condominio WHERE usuario_id = $1 AND NOT ativo AND encerrado_em IS NULL LIMIT 1',
     [usuarioId],
   );
   return rows.length > 0;
+}
+
+/** Estado atual do vínculo da sessão (para derrubar sessões após troca de perfil/unidade). */
+export async function findEstadoSessao(vinculoId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.perfil, v.ativo, v.sessao_versao, u.ativo AS usuario_ativo
+       FROM vinculos_condominio v
+       JOIN usuarios u ON u.id = v.usuario_id
+      WHERE v.id = $1`,
+    [vinculoId],
+  );
+  return rows[0] ?? null;
+}
+
+/** Síndico ativo do condomínio (no máximo um — índice ux_um_sindico_ativo). */
+export async function findSindicoAtivo(condominioId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.id, v.usuario_id, v.unidade_id, u.nome_completo, un.numero AS unidade_numero, b.nome AS bloco_nome
+       FROM vinculos_condominio v
+       JOIN usuarios u ON u.id = v.usuario_id
+       LEFT JOIN unidades un ON un.id = v.unidade_id
+       LEFT JOIN blocos b ON b.id = un.bloco_id
+      WHERE v.condominio_id = $1 AND v.perfil = 'SINDICO' AND v.ativo
+      FOR UPDATE OF v`,
+    [condominioId],
+  );
+  return rows[0] ?? null;
+}
+
+/** Moradores ativos do condomínio (candidatos a síndico). */
+export async function listMoradoresAtivos(condominioId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.id, u.nome_completo, un.numero AS unidade_numero, b.nome AS bloco_nome
+       FROM vinculos_condominio v
+       JOIN usuarios u ON u.id = v.usuario_id AND u.ativo
+       JOIN unidades un ON un.id = v.unidade_id
+       JOIN blocos b ON b.id = un.bloco_id
+      WHERE v.condominio_id = $1 AND v.perfil = 'MORADOR' AND v.ativo
+      ORDER BY b.nome, un.numero, u.nome_completo`,
+    [condominioId],
+  );
+  return rows;
+}
+
+export async function findMoradorAtivo(vinculoId, condominioId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.id, v.usuario_id, u.nome_completo
+       FROM vinculos_condominio v
+       JOIN usuarios u ON u.id = v.usuario_id AND u.ativo
+      WHERE v.id = $1 AND v.condominio_id = $2 AND v.perfil = 'MORADOR' AND v.ativo
+      FOR UPDATE OF v`,
+    [vinculoId, condominioId],
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Muda perfil/ativo do vínculo e derruba as sessões abertas dele.
+ * Desativar aqui encerra o vínculo (não volta para a fila de aprovação).
+ */
+export async function alterarPapel(vinculoId, { perfil, ativo }, db = pool) {
+  await db.query(
+    `UPDATE vinculos_condominio
+        SET perfil = $2, ativo = $3, sessao_versao = sessao_versao + 1,
+            encerrado_em = CASE WHEN $3 THEN NULL ELSE now() END
+      WHERE id = $1`,
+    [vinculoId, perfil, ativo],
+  );
 }

@@ -47,6 +47,7 @@ export function AppLayout({ titulo, subtitulo, children }) {
   // Itens só aparecem para quem tem acesso (mesma regra do middleware/RBAC)
   const perfil = estado.sessao.perfil;
   const itens = NAVEGACAO.filter((item) => {
+    if (perfil === 'admin') return item.url === '/admin';
     if (item.url === '/portaria') return perfil !== 'morador';
     if (item.url === '/visitantes') return perfil === 'morador';
     if (item.url === '/admin') return perfil === 'sindico';
