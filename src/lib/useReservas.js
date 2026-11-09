@@ -1,17 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { lerResposta } from '@/lib/apiClient';
 
 const VAZIO = { podeReservar: false, espacos: [], reservas: [], ocupacao: [] };
-
-async function lerResposta(res) {
-  const corpo = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const campo = corpo.fields && Object.values(corpo.fields)[0];
-    throw new Error(campo || corpo.error || 'Não foi possível concluir a operação.');
-  }
-  return corpo;
-}
 
 /** Reservas do condomínio vindas da API (RF.09). */
 export function useReservas() {

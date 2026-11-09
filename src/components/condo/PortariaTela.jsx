@@ -1,18 +1,12 @@
 'use client';
 
-import { LogIn, LogOut, QrCode, UserPlus } from 'lucide-react';
+import { Check, LogIn, LogOut, PhoneCall, Search, UserPlus, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
-import { Badge } from '@/components/ui/badge';
+import { CamposVisitante, SELECT_CLASSE } from '@/components/condo/campos-visitante';
+import { VisitaStatus, formatarDataHora } from '@/components/condo/VisitaStatus';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -23,61 +17,111 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useCondo } from '@/lib/condo-store';
-import { cn } from '@/lib/utils';
-const vazio = { nome: '', documento: '', unidade: '', placa: '', previsao: '' };
+import { useVisitas } from '@/lib/useVisitas';
+
+const vazio = { nome: '', tipoDocumento: 'CPF', documento: '', unidadeId: '', placa: '' };
+
+const SUCESSO = {
+  AUTORIZAR: (v) => `Confirmação por interfone registrada para ${v.nome}`,
+  RECUSAR: (v) => `Visita de ${v.nome} recusada`,
+  ENTRADA: (v) => `Entrada registrada para ${v.nome}`,
+  SAIDA: (v) => `Saída registrada para ${v.nome}`,
+};
+
 export default function Portaria() {
-  const { estado, criarVisitante, atualizarVisitante, gerarPasse } = useCondo();
+  const { visitas, unidades, carregando, erro, criar, acao } = useVisitas();
   const [form, setForm] = useState(vazio);
-  const [passe, setPasse] = useState(null);
-  const cadastrar = () => {
-    if (!form.nome || !form.documento || !form.unidade) {
-      toast.error('Preencha nome, documento e unidade de destino.');
-      return;
+  const [busca, setBusca] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  const registrar = async () => {
+    setEnviando(true);
+    try {
+      await criar(form);
+      toast.success(`${form.nome} registrado. Aguardando a confirmação do morador.`);
+      setForm(vazio);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setEnviando(false);
     }
-    criarVisitante({ ...form, placa: form.placa || '—', previsao: form.previsao || '--:--' });
-    toast.success(`Visitante ${form.nome} liberado e aguardando na portaria`);
-    setForm(vazio);
   };
-  const campos = [
-    { chave: 'nome', rotulo: 'Nome completo', placeholder: 'ex: Paulo Henrique Tavares' },
-    { chave: 'documento', rotulo: 'Documento (RG/CPF)', placeholder: 'ex: 384.221.900-12' },
-    { chave: 'unidade', rotulo: 'Unidade de destino', placeholder: 'ex: Apto 104 - Bloco B' },
-    { chave: 'placa', rotulo: 'Placa do carro', placeholder: 'ex: QRS-4C87' },
-    { chave: 'previsao', rotulo: 'Previsão de entrada', placeholder: '14:30', tipo: 'time' },
-  ];
+
+  const executar = async (v, nome) => {
+    try {
+      await acao(v.id, nome);
+      toast.success(SUCESSO[nome](v));
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  const termo = busca.trim().toLowerCase();
+  const filtradas = termo
+    ? visitas.filter(
+        (v) =>
+          v.nome.toLowerCase().includes(termo) ||
+          v.convite.toLowerCase().includes(termo) ||
+          v.unidade.toLowerCase().includes(termo),
+      )
+    : visitas;
+
   return (
     <AppLayout
       titulo="Portaria & Controle de Acesso"
-      subtitulo="Cadastro rápido de visitantes e acompanhamento de entradas e saídas"
+      subtitulo="Visitantes pré-autorizados pelos moradores e registro de quem chegou sem aviso"
     >
-      <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
-        <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+      {erro && (
+        <p className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {erro}
+        </p>
+      )}
+      <div className="grid gap-5 2xl:grid-cols-[380px_1fr]">
+        <section className="order-2 h-fit rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] 2xl:order-1">
           <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
-            <UserPlus className="h-4.5 w-4.5 text-primary" /> Cadastro rápido de visitante
+            <UserPlus className="h-4.5 w-4.5 text-primary" /> Visitante não previsto
           </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Para quem chegou sem pré-autorização. A entrada só é liberada depois que o morador
+            confirmar pelo app ou pelo interfone.
+          </p>
           <div className="mt-4 space-y-3">
-            {campos.map((c) => (
-              <div key={c.chave} className="space-y-1.5">
-                <Label htmlFor={c.chave}>{c.rotulo}</Label>
-                <Input
-                  id={c.chave}
-                  type={c.tipo ?? 'text'}
-                  value={form[c.chave]}
-                  placeholder={c.placeholder}
-                  onChange={(e) => setForm({ ...form, [c.chave]: e.target.value })}
-                  className="h-11 rounded-xl"
-                />
-              </div>
-            ))}
-            <Button className="mt-2 h-11 w-full rounded-xl" onClick={cadastrar}>
-              Liberar visitante
+            <CamposVisitante form={form} setForm={setForm} />
+            <div className="space-y-1.5">
+              <Label htmlFor="unidadeId">Unidade de destino</Label>
+              <select
+                id="unidadeId"
+                value={form.unidadeId}
+                onChange={(e) => setForm({ ...form, unidadeId: e.target.value })}
+                className={SELECT_CLASSE}
+              >
+                <option value="">Selecione a unidade</option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.rotulo}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button className="mt-2 h-11 w-full rounded-xl" onClick={registrar} disabled={enviando}>
+              Registrar e aguardar morador
             </Button>
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-          <h2 className="text-base font-bold text-foreground">Movimentação em tempo real</h2>
+        <section className="order-1 rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] 2xl:order-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-base font-bold text-foreground">Movimentação em tempo real</h2>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute top-3 left-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome, unidade ou convite"
+                className="h-10 rounded-xl pl-9"
+              />
+            </div>
+          </div>
           <div className="mt-4 overflow-x-auto">
             <Table>
               <TableHeader>
@@ -91,81 +135,82 @@ export default function Portaria() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {estado.visitantes.map((v) => (
+                {!carregando && filtradas.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      Nenhuma visita no momento.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {filtradas.map((v) => (
                   <TableRow key={v.id}>
                     <TableCell>
                       <p className="font-semibold text-foreground">{v.nome}</p>
                       <p className="text-xs text-muted-foreground">{v.documento}</p>
-                      {v.passe && (
-                        <p className="text-xs font-semibold text-primary">Passe: {v.passe}</p>
+                      {v.autorizacaoVia === 'PRE_AUTORIZACAO' && (
+                        <p className="text-xs font-semibold text-primary">Convite {v.convite}</p>
                       )}
                     </TableCell>
                     <TableCell className="text-sm">{v.unidade}</TableCell>
-                    <TableCell className="text-sm">{v.placa}</TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">{v.placa ?? '—'}</TableCell>
                     <TableCell className="text-sm">
-                      {v.previsao}
+                      {formatarDataHora(v.previsao)}
                       {v.entrada && (
                         <span className="block text-xs text-muted-foreground">
-                          Entrada {v.entrada}
-                          {v.saida ? ` · Saída ${v.saida}` : ''}
+                          Entrada {formatarDataHora(v.entrada).slice(-5)}
+                          {v.saida ? ` · Saída ${formatarDataHora(v.saida).slice(-5)}` : ''}
                         </span>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        className={cn(
-                          'rounded-full border-0 text-[11px]',
-                          v.status === 'aguardando' && 'bg-warning/15 text-warning-foreground',
-                          v.status === 'no-condominio' && 'bg-success/15 text-success',
-                          v.status === 'concluido' && 'bg-muted text-muted-foreground',
-                        )}
-                      >
-                        {v.status === 'aguardando'
-                          ? 'Aguardando'
-                          : v.status === 'no-condominio'
-                            ? 'No Condomínio'
-                            : 'Concluído'}
-                      </Badge>
+                      <VisitaStatus status={v.status} via={v.autorizacaoVia} />
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap justify-end gap-2">
-                        {v.status === 'aguardando' && (
+                        {v.status === 'AGUARDANDO' && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="rounded-lg"
+                              onClick={() => executar(v, 'AUTORIZAR')}
+                            >
+                              <PhoneCall className="h-3.5 w-3.5" /> Confirmado por interfone
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-lg"
+                              onClick={() => executar(v, 'RECUSAR')}
+                            >
+                              <X className="h-3.5 w-3.5" /> Recusar
+                            </Button>
+                          </>
+                        )}
+                        {v.status === 'AUTORIZADO' && (
                           <Button
                             size="sm"
                             className="rounded-lg"
-                            onClick={() => {
-                              atualizarVisitante(v.id, 'no-condominio');
-                              toast.success(`Entrada registrada para ${v.nome}`);
-                            }}
+                            onClick={() => executar(v, 'ENTRADA')}
                           >
                             <LogIn className="h-3.5 w-3.5" /> Entrada
                           </Button>
                         )}
-                        {v.status === 'no-condominio' && (
+                        {v.status === 'PRESENTE' && (
                           <Button
                             size="sm"
                             variant="outline"
                             className="rounded-lg"
-                            onClick={() => {
-                              atualizarVisitante(v.id, 'concluido');
-                              toast.success(`Saída registrada para ${v.nome}`);
-                            }}
+                            onClick={() => executar(v, 'SAIDA')}
                           >
                             <LogOut className="h-3.5 w-3.5" /> Saída
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-lg"
-                          onClick={() => {
-                            const codigo = gerarPasse(v.id);
-                            setPasse({ codigo, nome: v.nome });
-                            toast.success('Convite digital gerado com sucesso');
-                          }}
-                        >
-                          <QrCode className="h-3.5 w-3.5" /> Convite
-                        </Button>
+                        {['FINALIZADO', 'CANCELADO'].includes(v.status) && (
+                          <Check className="h-4 w-4 text-muted-foreground" />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -175,32 +220,6 @@ export default function Portaria() {
           </div>
         </section>
       </div>
-
-      <Dialog open={!!passe} onOpenChange={(o) => !o && setPasse(null)}>
-        <DialogContent className="rounded-2xl sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Convite Digital / Passe QR Code</DialogTitle>
-            <DialogDescription>
-              Envie este passe para {passe?.nome}. Apresente na portaria para liberação imediata.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4 py-2">
-            <div className="grid grid-cols-7 gap-1 rounded-xl border border-border bg-card p-4">
-              {Array.from({ length: 49 }).map((_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    'h-4 w-4 rounded-[2px]',
-                    (i * 7 + (passe?.codigo.length ?? 3)) % 3 === 0 ? 'bg-brand-dark' : 'bg-muted',
-                  )}
-                />
-              ))}
-            </div>
-            <p className="text-sm font-bold tracking-widest text-primary">{passe?.codigo}</p>
-            <p className="text-xs text-muted-foreground">Válido por 24 horas</p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </AppLayout>
   );
 }

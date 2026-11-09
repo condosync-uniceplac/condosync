@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { useCondo } from '@/lib/condo-store';
 import { dataLocal, turnoDaReserva } from '@/lib/turnos';
 import { useReservas } from '@/lib/useReservas';
+import { useVisitas } from '@/lib/useVisitas';
+import { VisitaStatus, formatarDataHora } from '@/components/condo/VisitaStatus';
 import { cn } from '@/lib/utils';
 const formatarData = (iso) => {
   const [a, m, d] = iso.split('-');
@@ -34,7 +36,13 @@ export default function Painel() {
   const { reservas, podeReservar } = useReservas();
   const minhas = podeReservar ? reservas.filter((r) => r.minha) : reservas;
   const proxima = minhas[0];
-  const esperados = estado.visitantes.filter((v) => v.status === 'aguardando').length;
+  const { visitas } = useVisitas();
+  const hoje = dataLocal(new Date());
+  const aguardandoMorador = visitas.filter((v) => v.status === 'AGUARDANDO').length;
+  const esperados = visitas.filter(
+    (v) => ['AGUARDANDO', 'AUTORIZADO'].includes(v.status) && dataLocal(v.previsao) === hoje,
+  ).length;
+  const ehMorador = estado.sessao?.perfil === 'morador';
   const naoLidos = estado.avisos.filter((a) => !a.lido).length;
   const abertos = estado.chamados.filter((c) => c.status !== 'resolvido').length;
   const indicadores = [
@@ -50,7 +58,9 @@ export default function Painel() {
     {
       titulo: 'Visitantes Esperados Hoje',
       valor: String(esperados),
-      detalhe: 'Aguardando liberação na portaria',
+      detalhe: aguardandoMorador
+        ? `${aguardandoMorador} aguardando confirmação do morador`
+        : 'Autorizados para hoje',
       icone: Users,
       cor: 'text-primary bg-accent',
     },
@@ -96,7 +106,10 @@ export default function Painel() {
         <Button className="rounded-xl" onClick={() => router.push('/reservas')}>
           <CalendarPlus className="h-4 w-4" /> Nova Reserva
         </Button>
-        <Button className="rounded-xl" onClick={() => router.push('/portaria')}>
+        <Button
+          className="rounded-xl"
+          onClick={() => router.push(ehMorador ? '/visitantes' : '/portaria')}
+        >
           <DoorOpen className="h-4 w-4" /> Liberar Visitante
         </Button>
         <Button className="rounded-xl" onClick={() => router.push('/chamados')}>
@@ -178,28 +191,18 @@ export default function Painel() {
           <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
             <h2 className="text-base font-bold text-foreground">Movimento da portaria</h2>
             <div className="mt-4 space-y-3">
-              {estado.visitantes.slice(0, 4).map((v) => (
+              {visitas.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhuma visita no momento.</p>
+              )}
+              {visitas.slice(0, 4).map((v) => (
                 <div key={v.id} className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-foreground">{v.nome}</p>
                     <p className="text-xs text-muted-foreground">
-                      {v.unidade} · previsão {v.previsao}
+                      {v.unidade} · previsão {formatarDataHora(v.previsao)}
                     </p>
                   </div>
-                  <Badge
-                    className={cn(
-                      'shrink-0 rounded-full border-0 text-[10px]',
-                      v.status === 'aguardando' && 'bg-warning/15 text-warning-foreground',
-                      v.status === 'no-condominio' && 'bg-success/15 text-success',
-                      v.status === 'concluido' && 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    {v.status === 'aguardando'
-                      ? 'Aguardando'
-                      : v.status === 'no-condominio'
-                        ? 'No condomínio'
-                        : 'Concluído'}
-                  </Badge>
+                  <VisitaStatus status={v.status} />
                 </div>
               ))}
             </div>

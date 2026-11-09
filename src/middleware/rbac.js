@@ -34,6 +34,7 @@ const RULES = [
   { prefix: '/admin', perfis: [PERFIS.SINDICO, PERFIS.ADMIN] },
   { prefix: '/api/admin', perfis: [PERFIS.SINDICO, PERFIS.ADMIN] },
   { prefix: '/portaria', perfis: [PERFIS.PORTARIA, PERFIS.SINDICO, PERFIS.ADMIN] },
+  { prefix: '/visitantes', perfis: [PERFIS.MORADOR] },
 ];
 
 const matches = (pathname, prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`);

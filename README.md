@@ -40,7 +40,7 @@ Navegador (React)  ──HTTP/JSON──▶  app/api/*  (rotas = controllers)
 - `src/lib/`: `db.js` (pool), `auth.js` (JWT), `session.js`, `env.js`, `validators.js` (zod), `http.js`.
 - O módulo **avisos** é o exemplo completo de ponta a ponta:
   [app/api/avisos/route.js](app/api/avisos/route.js) → [src/services/avisosService.js](src/services/avisosService.js) → [src/repositories/avisosRepository.js](src/repositories/avisosRepository.js).
-  `reservas` já está completo (Sprint 2); `visitas`, `chamados` e `enquetes` têm rotas provisórias que exigem login e respondem `501`.
+  `reservas` e `visitas` já estão completos (Sprint 2); `chamados` e `enquetes` têm rotas provisórias que exigem login e respondem `501`.
 
 ```
 condosync/
@@ -52,7 +52,8 @@ condosync/
 │  │  ├─ condominios/      # GET  lista + /:id/unidades (públicos, usados no cadastro)
 │  │  ├─ avisos/           # exemplo de módulo
 │  │  ├─ reservas/        # RF.09 — reservas com regras de conflito (Sprint 2)
-│  │  └─ visitas/ chamados/ enquetes/   # provisórios (501)
+│  │  ├─ visitas/         # RF.10 — portaria e visitantes (Sprint 2)
+│  │  └─ chamados/ enquetes/   # provisórios (501)
 │  ├─ login/  cadastro/
 │  └─ layout.js  page.js  globals.css
 ├─ src/
