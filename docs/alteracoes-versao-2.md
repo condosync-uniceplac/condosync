@@ -16,21 +16,26 @@ Melhorias definidas após a primeira apresentação. Cada item mostra a regra ou
 | **RN.09 / RNF.02 — Proteção dos dados** | "Dados protegidos" (genérico)                                                  | O Supabase expõe o banco por uma API pública                           | **RLS ligado em todas as tabelas** e acesso da chave pública revogado; o banco só é acessado pelo servidor                              |
 | **RN.06 — Perfis**                      | Morador, síndico ou "administrador"                                            | Inconsistente com RF.03 e o protótipo (Portaria)                       | Perfis padronizados: **Morador, Portaria e Síndico**                                                                                    |
 
-## 2. Previstas para a Sprint 3
+## 2. Implementadas na Sprint 2
 
-| Item                               | Versão 1                                               | Problema                                                              | Versão 2                                                                                                                                      |
-| ---------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **RN.12 — Conflito de reservas**   | "Não poderá realizar duas reservas no mesmo horário"   | Ambígua (o espaço ou o morador?)                                      | Duas regras: o **espaço** não pode ter horários sobrepostos e o **morador** não pode ter duas reservas simultâneas                            |
-| **Cancelamento de reserva**        | Não existia                                            | Lacuna                                                                | Morador cancela com antecedência mínima                                                                                                       |
-| **Cadastro de espaços**            | Não existia requisito                                  | Não havia como gerenciar os espaços                                   | Síndico cadastra e edita espaços                                                                                                              |
-| **RN.14 — Visitantes**             | Morador autoriza, mas a tela de cadastro é da portaria | Fluxo indefinido                                                      | Morador **pré-autoriza**; visitante não previsto é cadastrado pela portaria e aguarda confirmação                                             |
-| **Dados de visitantes**            | CPF completo na listagem da portaria                   | Exposição de dado pessoal                                             | CPF **mascarado** (`384.***.***-12`)                                                                                                          |
-| **RN.20 — Avisos**                 | "Usuários cadastrados" publicam avisos                 | Qualquer morador publicaria comunicados oficiais                      | Apenas o **síndico** publica                                                                                                                  |
-| **Categoria x urgência de avisos** | Misturadas no protótipo                                | Filtros confusos                                                      | Categoria e urgência separadas                                                                                                                |
-| **Chamados**                       | Morador via botões de mudar status                     | Morador alteraria o próprio chamado; só o síndico agindo vira gargalo | **Portaria** move para _Em análise_ e registra acompanhamento; só o **síndico** marca como _Resolvido_ ou reabre; morador só abre e acompanha |
-| **RN.24 — Votação**                | Um voto **por usuário**                                | Uma família com várias contas votaria várias vezes                    | Um voto **por unidade**, alterável até o encerramento                                                                                         |
+| Item                             | Versão 1                                               | Problema                         | Versão 2                                                                                                                                               |
+| -------------------------------- | ------------------------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **RN.12 — Conflito de reservas** | "Não poderá realizar duas reservas no mesmo horário"   | Ambígua (o espaço ou o morador?) | Duas regras: o **espaço** não pode ter horários sobrepostos e o **morador** não pode ter duas reservas simultâneas                                     |
+| **Cancelamento de reserva**      | Não existia                                            | Lacuna                           | Morador cancela com **24 h de antecedência**; o síndico cancela qualquer reserva                                                                       |
+| **RN.14 — Visitantes**           | Morador autoriza, mas a tela de cadastro é da portaria | Fluxo indefinido                 | Morador **pré-autoriza**; visitante não previsto é cadastrado pela portaria e aguarda a confirmação do morador (pelo app ou **interfone**, registrado) |
+| **Dados de visitantes**          | CPF completo na listagem da portaria                   | Exposição de dado pessoal        | CPF **mascarado** (`384.***.***-12`)                                                                                                                   |
 
-## 3. Correções no relatório
+## 3. Previstas para a Sprint 3
+
+| Item                               | Versão 1                               | Problema                                                              | Versão 2                                                                                                                                      |
+| ---------------------------------- | -------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cadastro de espaços**            | Não existia requisito                  | Não havia como gerenciar os espaços                                   | Síndico cadastra e edita espaços                                                                                                              |
+| **RN.20 — Avisos**                 | "Usuários cadastrados" publicam avisos | Qualquer morador publicaria comunicados oficiais                      | Apenas o **síndico** publica                                                                                                                  |
+| **Categoria x urgência de avisos** | Misturadas no protótipo                | Filtros confusos                                                      | Categoria e urgência separadas                                                                                                                |
+| **Chamados**                       | Morador via botões de mudar status     | Morador alteraria o próprio chamado; só o síndico agindo vira gargalo | **Portaria** move para _Em análise_ e registra acompanhamento; só o **síndico** marca como _Resolvido_ ou reabre; morador só abre e acompanha |
+| **RN.24 — Votação**                | Um voto **por usuário**                | Uma família com várias contas votaria várias vezes                    | Um voto **por unidade**, alterável até o encerramento                                                                                         |
+
+## 4. Correções no relatório
 
 - [ ] Capa: curso **Engenharia de Software** (está "Análise e Desenvolvimento de Sistemas")
 - [ ] Nome da disciplina padronizado: **Projeto Integrado de Engenharia de Produto**
@@ -40,7 +45,7 @@ Melhorias definidas após a primeira apresentação. Cada item mostra a regra ou
 - [ ] Registrar as decisões técnicas da implementação: JavaScript com validação Zod, autenticação própria (bcrypt + sessão JWT em cookie), PostgreSQL no Supabase acessado só pelo servidor, deploy na Vercel e CI no GitHub Actions
 - [ ] Preencher **Evidências de Teste** com os casos de `docs/casos-de-teste-sprint-1.md`
 
-## 4. Sugestão de slide "Evolução do projeto"
+## 5. Sugestão de slide "Evolução do projeto"
 
 > **Da proposta ao produto: o que mudou após a primeira apresentação**
 >
