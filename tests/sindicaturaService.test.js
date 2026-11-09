@@ -9,7 +9,7 @@ vi.mock('@/repositories/vinculosRepository', () => ({
 }));
 
 const repo = await import('@/repositories/vinculosRepository');
-const { consultar, designar } = await import('@/services/sindicaturaService');
+const { consultar, designar, retirar } = await import('@/services/sindicaturaService');
 
 const admin = { perfil: 'ADMIN', condominioId: '1', vinculoId: '50' };
 const sindico = { perfil: 'SINDICO', condominioId: '1', vinculoId: '30' };
@@ -75,5 +75,22 @@ describe('sindicaturaService — designação do síndico', () => {
   it('não designa quem já é o síndico', async () => {
     repo.findSindicoAtivo.mockResolvedValue({ id: 30, usuario_id: 1, unidade_id: 7 });
     await expect(designar(admin, 10)).rejects.toMatchObject({ status: 422 });
+  });
+});
+
+describe('sindicaturaService — retirar a função', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('administrador retira: o síndico volta a ser morador da unidade', async () => {
+    repo.findSindicoAtivo.mockResolvedValue({ id: 30, unidade_id: 7, nome_completo: 'Maria' });
+    const r = await retirar(admin);
+    expect(repo.alterarPapel).toHaveBeenCalledWith(30, { perfil: 'MORADOR', ativo: true }, 'tx');
+    expect(r).toEqual({ exSindico: 'Maria', voltouAMorador: true });
+  });
+
+  it('só o administrador retira, e só se houver síndico', async () => {
+    await expect(retirar(sindico)).rejects.toMatchObject({ status: 403 });
+    repo.findSindicoAtivo.mockResolvedValue(null);
+    await expect(retirar(admin)).rejects.toMatchObject({ status: 404 });
   });
 });
