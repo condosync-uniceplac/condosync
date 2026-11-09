@@ -13,38 +13,6 @@ export const formatarData = (valor) => {
 };
 const estadoInicial = {
   sessao: null,
-  visitantes: [
-    {
-      id: 'v1',
-      nome: 'Paulo Henrique Tavares',
-      documento: 'MG-14.882.331',
-      unidade: 'Apto 104 - Bloco B',
-      placa: 'QRS-4C87',
-      previsao: '14:30',
-      status: 'aguardando',
-    },
-    {
-      id: 'v2',
-      nome: 'Aline Rodrigues Pinto',
-      documento: 'CPF 384.221.900-12',
-      unidade: 'Apto 302 - Bloco A',
-      placa: '—',
-      previsao: '09:15',
-      status: 'no-condominio',
-      entrada: '09:12',
-    },
-    {
-      id: 'v3',
-      nome: 'Transportadora Vale Sul',
-      documento: 'CNPJ 12.884.001/0001-40',
-      unidade: 'Apto 701 - Bloco C',
-      placa: 'LKM-2H09',
-      previsao: '08:00',
-      status: 'concluido',
-      entrada: '08:05',
-      saida: '08:41',
-    },
-  ],
   avisos: [
     {
       id: 'a1',
@@ -161,7 +129,7 @@ const estadoInicial = {
 const CondoContext = createContext(null);
 const CHAVE = 'condosync-estado';
 // `sessao` e `usuario` vêm do login real (servidor); o restante são dados de demonstração.
-// Reservas já vêm do banco (useReservas); os demais módulos serão migrados nas próximas sprints.
+// Reservas e visitas já vêm do banco (useReservas, useVisitas); os demais módulos serão migrados nas próximas sprints.
 export function CondoProvider({ children, sessao, usuario }) {
   const [estado, setEstado] = useState({ ...estadoInicial, sessao });
   useEffect(() => {
@@ -179,34 +147,6 @@ export function CondoProvider({ children, sessao, usuario }) {
       /* ignora */
     }
   }, [estado]);
-  const horaAgora = () =>
-    new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const criarVisitante = useCallback((dados) => {
-    setEstado((e) => ({
-      ...e,
-      visitantes: [{ ...dados, id: crypto.randomUUID(), status: 'aguardando' }, ...e.visitantes],
-    }));
-  }, []);
-  const atualizarVisitante = useCallback((id, status) => {
-    setEstado((e) => ({
-      ...e,
-      visitantes: e.visitantes.map((v) => {
-        if (v.id !== id) return v;
-        const atualizado = { ...v, status };
-        if (status === 'no-condominio') atualizado.entrada = horaAgora();
-        if (status === 'concluido') atualizado.saida = horaAgora();
-        return atualizado;
-      }),
-    }));
-  }, []);
-  const gerarPasse = useCallback((id) => {
-    const codigo = `CS-${Math.floor(100000 + Math.random() * 899999)}`;
-    setEstado((e) => ({
-      ...e,
-      visitantes: e.visitantes.map((v) => (v.id === id ? { ...v, passe: codigo } : v)),
-    }));
-    return codigo;
-  }, []);
   const marcarLido = useCallback((id) => {
     setEstado((e) => ({
       ...e,
@@ -257,25 +197,12 @@ export function CondoProvider({ children, sessao, usuario }) {
     () => ({
       estado,
       usuario,
-      criarVisitante,
-      atualizarVisitante,
-      gerarPasse,
       marcarLido,
       criarChamado,
       moverChamado,
       votar,
     }),
-    [
-      estado,
-      usuario,
-      criarVisitante,
-      atualizarVisitante,
-      gerarPasse,
-      marcarLido,
-      criarChamado,
-      moverChamado,
-      votar,
-    ],
+    [estado, usuario, marcarLido, criarChamado, moverChamado, votar],
   );
   return <CondoContext.Provider value={valor}>{children}</CondoContext.Provider>;
 }

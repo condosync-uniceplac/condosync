@@ -7,6 +7,7 @@ import {
   Building2,
   CalendarDays,
   ClipboardList,
+  DoorOpen,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -31,6 +32,7 @@ const NAVEGACAO = [
   { titulo: 'Visão Geral', url: '/painel', icone: LayoutDashboard },
   { titulo: 'Reservas', url: '/reservas', icone: CalendarDays },
   { titulo: 'Portaria', url: '/portaria', icone: ShieldCheck },
+  { titulo: 'Meus Visitantes', url: '/visitantes', icone: DoorOpen },
   { titulo: 'Mural de Avisos', url: '/avisos', icone: Megaphone },
   { titulo: 'Chamados', url: '/chamados', icone: ClipboardList },
   { titulo: 'Enquetes', url: '/enquetes', icone: Vote },
@@ -46,6 +48,7 @@ export function AppLayout({ titulo, subtitulo, children }) {
   const perfil = estado.sessao.perfil;
   const itens = NAVEGACAO.filter((item) => {
     if (item.url === '/portaria') return perfil !== 'morador';
+    if (item.url === '/visitantes') return perfil === 'morador';
     if (item.url === '/admin') return perfil === 'sindico';
     return true;
   });

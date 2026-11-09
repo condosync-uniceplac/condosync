@@ -128,3 +128,65 @@ export const reservaSchema = z.object({
     .int('Informe um número inteiro.')
     .min(1, 'Informe ao menos 1 convidado.'),
 });
+
+// RF.10 / RN.14 — visitantes
+const placaSchema = z.preprocess(
+  (v) => (typeof v === 'string' ? v.toUpperCase().replace(/[^A-Z0-9]/g, '') : v),
+  z
+    .string()
+    .regex(/^([A-Z]{3}\d{4}|[A-Z]{3}\d[A-Z]\d{2})$/, 'Placa inválida (ex.: ABC-1234 ou ABC1D23).')
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+);
+
+const visitanteBase = z
+  .object({
+    nome: z
+      .string({ error: 'Informe o nome do visitante.' })
+      .trim()
+      .min(3, 'Informe o nome completo do visitante.')
+      .max(150, 'Nome muito longo.'),
+    tipoDocumento: z.enum(['CPF', 'RG'], { error: 'Escolha o tipo de documento.' }),
+    documento: z
+      .string({ error: 'Informe o documento.' })
+      .trim()
+      .transform((v) => v.toUpperCase().replace(/[^0-9A-Z]/g, '')),
+    placa: placaSchema,
+  })
+  .superRefine((v, ctx) => {
+    if (v.tipoDocumento === 'CPF') {
+      if (
+        !/^\d{11}$/.test(v.documento) ||
+        /^(\d)\1{10}$/.test(v.documento) ||
+        !cpfDigitosValidos(v.documento)
+      ) {
+        ctx.addIssue({ code: 'custom', path: ['documento'], message: 'CPF inválido.' });
+      }
+    } else if (v.documento.length < 5 || v.documento.length > 14) {
+      ctx.addIssue({ code: 'custom', path: ['documento'], message: 'RG inválido.' });
+    }
+  });
+
+/** Morador pré-autoriza um visitante para a própria unidade. */
+export const preAutorizacaoSchema = visitanteBase.and(
+  z.object({
+    previsao: z
+      .string({ error: 'Informe a data e o horário previstos.' })
+      .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Informe a data e o horário previstos.'),
+  }),
+);
+
+/** Portaria registra um visitante que chegou sem pré-autorização. */
+export const visitaNaoPrevistaSchema = visitanteBase.and(
+  z.object({
+    unidadeId: z.coerce
+      .number({ error: 'Escolha a unidade de destino.' })
+      .int()
+      .positive('Escolha a unidade de destino.'),
+  }),
+);
+
+export const ACOES_VISITA = ['AUTORIZAR', 'RECUSAR', 'CANCELAR', 'ENTRADA', 'SAIDA'];
+export const acaoVisitaSchema = z.object({
+  acao: z.enum(ACOES_VISITA, { error: 'Ação inválida.' }),
+});
