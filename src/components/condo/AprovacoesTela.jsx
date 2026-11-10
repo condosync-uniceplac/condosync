@@ -4,6 +4,7 @@ import { Check, UserCheck, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { EspacosAba } from '@/components/condo/EspacosAba';
 import { MoradoresAba } from '@/components/condo/MoradoresAba';
 import { PortariaAba } from '@/components/condo/PortariaAba';
 import { SindicaturaCard } from '@/components/condo/SindicaturaCard';
@@ -80,7 +81,7 @@ export default function AprovacoesTela() {
   return (
     <AppLayout
       titulo="Administração"
-      subtitulo="Síndico, cadastros, moradores por unidade e contas da portaria"
+      subtitulo="Síndico, cadastros, moradores, portaria e espaços do condomínio"
     >
       <SindicaturaCard />
       <Tabs defaultValue="cadastros">
@@ -94,12 +95,18 @@ export default function AprovacoesTela() {
           <TabsTrigger value="portaria" className="rounded-lg">
             Portaria
           </TabsTrigger>
+          <TabsTrigger value="espacos" className="rounded-lg">
+            Espaços
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="moradores" className="mt-5">
           <MoradoresAba />
         </TabsContent>
         <TabsContent value="portaria" className="mt-5">
           <PortariaAba />
+        </TabsContent>
+        <TabsContent value="espacos" className="mt-5">
+          <EspacosAba />
         </TabsContent>
         <TabsContent value="cadastros" className="mt-5">
           <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">

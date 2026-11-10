@@ -206,3 +206,24 @@ export const contaPortariaSchema = z.object({
     .date('Data de nascimento inválida.')
     .refine((v) => v <= new Date().toISOString().slice(0, 10), 'Data de nascimento no futuro.'),
 });
+
+// RF.09 — espaço de reserva cadastrado pelo síndico
+export const espacoSchema = z.object({
+  nome: z
+    .string({ error: 'Informe o nome do espaço.' })
+    .trim()
+    .min(3, 'O nome deve ter pelo menos 3 caracteres.')
+    .max(100, 'Nome muito longo.'),
+  descricao: z.string().trim().max(300, 'Descrição muito longa (máx. 300 caracteres).').optional(),
+  capacidade: z.coerce
+    .number({ error: 'Informe a capacidade.' })
+    .int('Informe um número inteiro.')
+    .min(1, 'A capacidade deve ser de pelo menos 1 pessoa.')
+    .max(2000, 'Capacidade muito alta.'),
+  valor: z.coerce
+    .number({ error: 'Informe o valor (0 para isento).' })
+    .min(0, 'O valor não pode ser negativo.')
+    .max(100000, 'Valor muito alto.')
+    .refine((v) => Math.round(v * 100) === v * 100, 'Use no máximo 2 casas decimais.'),
+  ativo: z.boolean().default(true),
+});
