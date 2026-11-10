@@ -1,9 +1,10 @@
 'use client';
 
-import { ImagePlus, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { ImageIcon, Loader2, MessageSquare, Plus } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { SELECT_CLASSE } from '@/components/condo/campos-visitante';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,157 +14,177 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { formatarData, useCondo } from '@/lib/condo-store';
+import { useChamados } from '@/lib/useChamados';
 import { cn } from '@/lib/utils';
-const CATEGORIAS = ['Barulho', 'Vaga de Garagem', 'Manutenção', 'Limpeza'];
-const URGENCIAS = ['Baixa', 'Média', 'Alta'];
+
 const COLUNAS = [
-  { id: 'aberto', titulo: 'Aberto', cor: 'bg-destructive' },
-  { id: 'analise', titulo: 'Em Análise', cor: 'bg-warning' },
-  { id: 'resolvido', titulo: 'Resolvido', cor: 'bg-success' },
+  { id: 'ABERTO', titulo: 'Aberto', cor: 'bg-destructive' },
+  { id: 'EM_ANALISE', titulo: 'Em Análise', cor: 'bg-warning' },
+  { id: 'RESOLVIDO', titulo: 'Resolvido', cor: 'bg-success' },
 ];
+const ROTULO_STATUS = { ABERTO: 'Aberto', EM_ANALISE: 'Em análise', RESOLVIDO: 'Resolvido' };
+const URGENCIA = {
+  ALTA: { rotulo: 'Alta', classe: 'bg-destructive/10 text-destructive' },
+  MEDIA: { rotulo: 'Média', classe: 'bg-warning/15 text-warning-foreground' },
+  BAIXA: { rotulo: 'Baixa', classe: 'bg-muted text-muted-foreground' },
+};
+const PERFIL = { MORADOR: 'Morador', PORTARIA: 'Portaria', SINDICO: 'Síndico', ADMIN: 'Admin' };
+const vazio = { titulo: '', descricao: '', categoriaId: '', urgencia: 'MEDIA' };
+
+const dataHora = (iso) =>
+  new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+/** Texto do botão de cada transição permitida. */
+function rotuloAcao(atual, destino) {
+  if (destino === 'RESOLVIDO') return 'Marcar como resolvido';
+  if (atual === 'RESOLVIDO') return `Reabrir (${ROTULO_STATUS[destino]})`;
+  if (destino === 'EM_ANALISE') return 'Mover para Em análise';
+  return 'Voltar para Aberto';
+}
+
+function UrgenciaBadge({ urgencia }) {
+  const u = URGENCIA[urgencia];
+  return (
+    <Badge className={cn('rounded-full border-0 text-[10px]', u.classe)}>Urgência {u.rotulo}</Badge>
+  );
+}
+
+/** RN.22 (versão 2) / bug #18: o status só muda conforme o perfil, e tudo fica no histórico. */
 export default function Chamados() {
-  const { estado, usuario, criarChamado, moverChamado } = useCondo();
-  const [aberto, setAberto] = useState(false);
-  const [titulo, setTitulo] = useState('');
-  const [categoria, setCategoria] = useState('Barulho');
-  const [descricao, setDescricao] = useState('');
-  const [urgencia, setUrgencia] = useState('Média');
-  const [anexo, setAnexo] = useState();
-  const enviar = () => {
-    if (!titulo || !descricao) {
-      toast.error('Informe o título e a descrição da ocorrência.');
-      return;
-    }
-    criarChamado({
-      titulo,
-      categoria,
-      descricao,
-      urgencia,
-      autor: usuario?.nome ?? 'Morador',
-      unidade: usuario?.cargo ?? 'Apto 104 - Bloco B',
-      ...(anexo ? { anexo } : {}),
-    });
-    toast.success('Chamado aberto com sucesso! Protocolo enviado à administração.');
-    setAberto(false);
-    setTitulo('');
-    setDescricao('');
-    setAnexo(undefined);
-    setUrgencia('Média');
+  const {
+    perfil,
+    podeComentar,
+    categorias,
+    chamados,
+    carregando,
+    erro,
+    abrir,
+    alterarStatus,
+    comentar,
+    detalhar,
+  } = useChamados();
+  const ehMorador = perfil === 'MORADOR';
+
+  const [novo, setNovo] = useState(false);
+  const [form, setForm] = useState(vazio);
+  const [arquivo, setArquivo] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+
+  const [aberto, setAberto] = useState(null); // id do chamado no detalhe
+  const [detalhe, setDetalhe] = useState(null);
+  const [comentario, setComentario] = useState('');
+  const [enviando, setEnviando] = useState(null);
+
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const abrirNovo = () => {
+    setForm({ ...vazio, categoriaId: categorias[0] ? String(categorias[0].id) : '' });
+    setArquivo(null);
+    setNovo(true);
   };
+
+  const enviar = async () => {
+    const fd = new FormData();
+    Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+    if (arquivo) fd.append('anexo', arquivo);
+    setSalvando(true);
+    try {
+      await abrir(fd);
+      toast.success('Chamado aberto! A administração foi notificada.');
+      setNovo(false);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const carregarDetalhe = useCallback(
+    async (id) => {
+      try {
+        setDetalhe(await detalhar(id));
+      } catch (e) {
+        toast.error(e.message);
+        setAberto(null);
+      }
+    },
+    [detalhar],
+  );
+
+  useEffect(() => {
+    if (aberto) carregarDetalhe(aberto);
+    else setDetalhe(null);
+    setComentario('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto]);
+
+  const executar = async (chave, acao, sucesso) => {
+    setEnviando(chave);
+    try {
+      await acao();
+      toast.success(sucesso);
+      setComentario('');
+      await carregarDetalhe(aberto);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setEnviando(null);
+    }
+  };
+
+  const mover = (destino) =>
+    executar(
+      destino,
+      () => alterarStatus(aberto, destino, comentario.trim() || undefined),
+      `Chamado movido para "${ROTULO_STATUS[destino]}".`,
+    );
+
+  const registrarComentario = () =>
+    executar('comentario', () => comentar(aberto, comentario.trim()), 'Acompanhamento registrado.');
+
+  const c = detalhe?.chamado;
+
   return (
     <AppLayout
       titulo="Chamados & Ocorrências"
-      subtitulo="Registre ocorrências e acompanhe a resolução pela administração"
+      subtitulo={
+        ehMorador
+          ? 'Registre ocorrências e acompanhe a resolução pela administração'
+          : 'Ocorrências do condomínio e o andamento de cada uma'
+      }
     >
-      <Dialog open={aberto} onOpenChange={setAberto}>
-        <DialogTrigger asChild>
-          <Button className="rounded-xl">
-            <Plus className="h-4 w-4" /> Registrar Ocorrência
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="rounded-2xl sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Nova ocorrência</DialogTitle>
-            <DialogDescription>
-              Descreva o ocorrido para que a administração possa tomar as providências.
-            </DialogDescription>
-          </DialogHeader>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button className="rounded-xl" onClick={abrirNovo} disabled={carregando}>
+          <Plus className="h-4 w-4" /> Registrar Ocorrência
+        </Button>
+        {ehMorador && (
+          <p className="text-xs text-muted-foreground">
+            Você vê apenas os chamados que abriu. Somente a administração altera o status.
+          </p>
+        )}
+        {perfil === 'PORTARIA' && (
+          <p className="text-xs text-muted-foreground">
+            A portaria move chamados de Aberto para Em análise e registra acompanhamentos.
+          </p>
+        )}
+      </div>
 
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="titulo">Título</Label>
-              <Input
-                id="titulo"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                placeholder="ex: Infiltração na garagem do Bloco B"
-                className="h-11 rounded-xl"
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Categoria</Label>
-                <Select value={categoria} onValueChange={setCategoria}>
-                  <SelectTrigger className="h-11 rounded-xl">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIAS.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Nível de urgência</Label>
-                <Select value={urgencia} onValueChange={(v) => setUrgencia(v)}>
-                  <SelectTrigger className="h-11 rounded-xl">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {URGENCIAS.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="descricao">Descrição</Label>
-              <Textarea
-                id="descricao"
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                placeholder="Detalhe o que aconteceu, local e horário."
-                className="min-h-24 rounded-xl"
-              />
-            </div>
-
-            <button
-              onClick={() => {
-                setAnexo('foto-ocorrencia.jpg');
-                toast.success('Foto anexada à ocorrência');
-              }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-4 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-            >
-              <ImagePlus className="h-4 w-4" />
-              {anexo ? `Anexado: ${anexo}` : 'Anexar foto (simulado)'}
-            </button>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setAberto(false)}>
-              Cancelar
-            </Button>
-            <Button className="rounded-xl" onClick={enviar}>
-              Abrir chamado
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {erro && <p className="mt-4 text-sm text-destructive">{erro}</p>}
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         {COLUNAS.map((col) => {
-          const itens = estado.chamados.filter((c) => c.status === col.id);
+          const itens = chamados.filter((x) => x.status === col.id);
           return (
             <section key={col.id} className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2">
@@ -175,62 +196,276 @@ export default function Chamados() {
               </div>
 
               <div className="mt-4 space-y-3">
-                {itens.length === 0 && (
+                {carregando && <p className="text-xs text-muted-foreground">Carregando...</p>}
+                {!carregando && itens.length === 0 && (
                   <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
                     Nenhum chamado nesta etapa.
                   </p>
                 )}
-                {itens.map((c) => (
-                  <article
-                    key={c.id}
-                    className="rounded-xl border border-border bg-background p-4 shadow-[var(--shadow-soft)]"
+                {itens.map((x) => (
+                  <button
+                    key={x.id}
+                    onClick={() => setAberto(x.id)}
+                    className="block w-full rounded-xl border border-border bg-background p-4 text-left shadow-[var(--shadow-soft)] transition-colors hover:border-primary/50"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className="rounded-full text-[10px]">
-                        {c.categoria}
+                        {x.categoria}
                       </Badge>
-                      <Badge
-                        className={cn(
-                          'rounded-full border-0 text-[10px]',
-                          c.urgencia === 'Alta' && 'bg-destructive/10 text-destructive',
-                          c.urgencia === 'Média' && 'bg-warning/15 text-warning-foreground',
-                          c.urgencia === 'Baixa' && 'bg-muted text-muted-foreground',
-                        )}
-                      >
-                        Urgência {c.urgencia}
-                      </Badge>
+                      <UrgenciaBadge urgencia={x.urgencia} />
                     </div>
-                    <h3 className="mt-2 text-sm font-bold text-foreground">{c.titulo}</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">{c.descricao}</p>
-                    {c.anexo && (
-                      <p className="mt-2 text-[11px] font-semibold text-primary">📎 {c.anexo}</p>
-                    )}
+                    <h3 className="mt-2 text-sm font-bold text-foreground">{x.titulo}</h3>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{x.descricao}</p>
                     <p className="mt-2 text-[11px] text-muted-foreground">
-                      {c.autor} · {c.unidade} · {formatarData(c.data)}
+                      #{x.id} · {x.solicitante}
+                      {x.unidade ? ` · ${x.unidade}` : ` · ${PERFIL[x.perfilSolicitante]}`} ·{' '}
+                      {dataHora(x.criadoEm)}
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {COLUNAS.filter((o) => o.id !== c.status).map((o) => (
-                        <Button
-                          key={o.id}
-                          size="sm"
-                          variant="outline"
-                          className="rounded-lg text-xs"
-                          onClick={() => {
-                            moverChamado(c.id, o.id);
-                            toast.success(`Chamado movido para "${o.titulo}"`);
-                          }}
-                        >
-                          {o.titulo}
-                        </Button>
-                      ))}
-                    </div>
-                  </article>
+                    {(x.anexos.length > 0 || x.comentarios > 0) && (
+                      <p className="mt-2 flex gap-3 text-[11px] font-semibold text-primary">
+                        {x.anexos.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <ImageIcon className="h-3.5 w-3.5" /> Foto
+                          </span>
+                        )}
+                        {x.comentarios > 0 && (
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="h-3.5 w-3.5" /> {x.comentarios}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </button>
                 ))}
               </div>
             </section>
           );
         })}
       </div>
+
+      {/* Novo chamado */}
+      <Dialog open={novo} onOpenChange={setNovo}>
+        <DialogContent className="rounded-2xl sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nova ocorrência</DialogTitle>
+            <DialogDescription>
+              Descreva o ocorrido para que a administração possa tomar as providências.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="c-titulo">Título</Label>
+              <Input
+                id="c-titulo"
+                value={form.titulo}
+                onChange={set('titulo')}
+                placeholder="ex: Infiltração na garagem do Bloco B"
+                className="h-11 rounded-xl"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="c-cat">Categoria</Label>
+                <select
+                  id="c-cat"
+                  value={form.categoriaId}
+                  onChange={set('categoriaId')}
+                  className={SELECT_CLASSE}
+                >
+                  {categorias.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="c-urg">Urgência</Label>
+                <select
+                  id="c-urg"
+                  value={form.urgencia}
+                  onChange={set('urgencia')}
+                  className={SELECT_CLASSE}
+                >
+                  <option value="BAIXA">Baixa</option>
+                  <option value="MEDIA">Média</option>
+                  <option value="ALTA">Alta</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="c-desc">Descrição</Label>
+              <Textarea
+                id="c-desc"
+                rows={4}
+                value={form.descricao}
+                onChange={set('descricao')}
+                placeholder="Detalhe o que aconteceu, local e horário."
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="c-foto">Foto (opcional)</Label>
+              <Input
+                id="c-foto"
+                type="file"
+                accept=".png,.jpg,.jpeg,.pdf"
+                onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+                className="h-11 rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">PNG, JPG ou PDF de até 2 MB.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-xl" onClick={() => setNovo(false)}>
+              Cancelar
+            </Button>
+            <Button className="rounded-xl" onClick={enviar} disabled={salvando}>
+              {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+              Abrir chamado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detalhe + acompanhamento */}
+      <Dialog open={!!aberto} onOpenChange={(o) => !o && setAberto(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-xl">
+          {!c ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Carregando...</p>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  #{c.id} · {c.titulo}
+                </DialogTitle>
+                <DialogDescription>
+                  {c.solicitante}
+                  {c.unidade ? ` · ${c.unidade}` : ` · ${PERFIL[c.perfilSolicitante]}`} · aberto em{' '}
+                  {dataHora(c.criadoEm)}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="rounded-full">{ROTULO_STATUS[c.status]}</Badge>
+                <Badge variant="outline" className="rounded-full text-[10px]">
+                  {c.categoria}
+                </Badge>
+                <UrgenciaBadge urgencia={c.urgencia} />
+              </div>
+              <p className="whitespace-pre-line text-sm text-foreground">{c.descricao}</p>
+
+              {c.anexos.map((x) =>
+                x.mime.startsWith('image/') ? (
+                  <a
+                    key={x.id}
+                    href={`/api/chamados/${c.id}/anexos/${x.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/chamados/${c.id}/anexos/${x.id}`}
+                      alt={`Foto do chamado #${c.id}`}
+                      className="max-h-64 rounded-xl border border-border object-contain"
+                    />
+                  </a>
+                ) : (
+                  <a
+                    key={x.id}
+                    href={`/api/chamados/${c.id}/anexos/${x.id}`}
+                    download={x.nome}
+                    className="text-sm font-semibold text-primary underline"
+                  >
+                    📎 {x.nome}
+                  </a>
+                ),
+              )}
+
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Acompanhamento</h3>
+                <ol className="mt-2 space-y-2 border-l-2 border-border pl-4">
+                  <li className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">Chamado aberto</span> por{' '}
+                    {c.solicitante} · {dataHora(c.criadoEm)}
+                  </li>
+                  {detalhe.historico.map((h) => (
+                    <li key={h.id} className="text-xs text-muted-foreground">
+                      {h.novoStatus && (
+                        <span className="font-semibold text-foreground">
+                          Movido para {ROTULO_STATUS[h.novoStatus]}{' '}
+                        </span>
+                      )}
+                      <span>
+                        {h.novoStatus ? 'por' : 'Comentário de'} {h.autor} ({PERFIL[h.perfil]}) ·{' '}
+                        {dataHora(h.criadoEm)}
+                      </span>
+                      {h.comentario && (
+                        <p className="mt-1 whitespace-pre-line rounded-lg bg-muted p-2 text-foreground">
+                          {h.comentario}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {(detalhe.podeComentar || c.transicoes.length > 0) && (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <Label htmlFor="c-coment">
+                    {detalhe.podeComentar ? 'Comentário' : 'Comentário (opcional)'}
+                  </Label>
+                  <Textarea
+                    id="c-coment"
+                    rows={3}
+                    value={comentario}
+                    onChange={(e) => setComentario(e.target.value)}
+                    placeholder="ex: Zelador acionado, troca prevista para amanhã."
+                    className="rounded-xl"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O comentário vai junto com a mudança de status, ou pode ser registrado sozinho.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {c.transicoes.map((s) => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant={s === 'RESOLVIDO' ? 'default' : 'outline'}
+                        className="rounded-lg"
+                        disabled={!!enviando}
+                        onClick={() => mover(s)}
+                      >
+                        {enviando === s && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        {rotuloAcao(c.status, s)}
+                      </Button>
+                    ))}
+                    {detalhe.podeComentar && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="rounded-lg"
+                        disabled={!!enviando || comentario.trim().length < 3}
+                        onClick={registrarComentario}
+                      >
+                        {enviando === 'comentario' && (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        )}
+                        Registrar comentário
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {ehMorador && (
+                <p className="text-xs text-muted-foreground">
+                  Somente a administração do condomínio altera o status deste chamado.
+                </p>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
