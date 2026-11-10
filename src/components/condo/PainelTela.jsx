@@ -19,6 +19,7 @@ import { useCondo } from '@/lib/condo-store';
 import { dataLocal, turnoDaReserva } from '@/lib/turnos';
 import { useAvisos } from '@/lib/useAvisos';
 import { useChamadosAbertos } from '@/lib/useChamados';
+import { useEnquetes } from '@/lib/useEnquetes';
 import { useReservas } from '@/lib/useReservas';
 import { useVisitas } from '@/lib/useVisitas';
 import { VisitaStatus, formatarDataHora } from '@/components/condo/VisitaStatus';
@@ -29,14 +30,17 @@ const formatarData = (iso) => {
 };
 
 export default function Painel() {
-  const { estado, usuario } = useCondo();
+  const { estado, usuario, condominio } = useCondo();
   const { avisos, confirmarLeitura } = useAvisos();
   const router = useRouter();
   const { reservas, podeReservar } = useReservas();
   const minhas = podeReservar ? reservas.filter((r) => r.minha) : reservas;
   const proxima = minhas[0];
   const { visitas } = useVisitas();
+  const { enquetes, podeVotar } = useEnquetes();
+  const enquetesAbertas = enquetes.filter((e) => !e.encerrada);
   const hoje = dataLocal(new Date());
+  const reservasHoje = reservas.filter((r) => dataLocal(r.inicio) === hoje).length;
   const aguardandoMorador = visitas.filter((v) => v.status === 'AGUARDANDO').length;
   const esperados = visitas.filter(
     (v) => ['AGUARDANDO', 'AUTORIZADO'].includes(v.status) && dataLocal(v.previsao) === hoje,
@@ -44,22 +48,37 @@ export default function Painel() {
   const ehMorador = estado.sessao?.perfil === 'morador';
   const naoLidos = avisos.filter((a) => !a.lido).length;
   const abertos = useChamadosAbertos();
+  const perfil = estado.sessao?.perfil;
   const indicadores = [
-    {
-      titulo: 'Próxima Reserva Agendada',
-      valor: proxima ? formatarData(dataLocal(proxima.inicio)) : 'Nenhuma',
-      detalhe: proxima
-        ? `${proxima.espaco} · ${turnoDaReserva(proxima.inicio, proxima.fim)?.rotulo ?? ''}`
-        : 'Nenhuma reserva ativa',
-      icone: CalendarDays,
-      cor: 'text-primary bg-accent',
-    },
+    podeReservar
+      ? {
+          titulo: 'Próxima Reserva Agendada',
+          valor: proxima ? formatarData(dataLocal(proxima.inicio)) : 'Nenhuma',
+          detalhe: proxima
+            ? `${proxima.espaco} · ${turnoDaReserva(proxima.inicio, proxima.fim)?.rotulo ?? ''}`
+            : 'Nenhuma reserva ativa da sua unidade',
+          icone: CalendarDays,
+          cor: 'text-primary bg-accent',
+        }
+      : {
+          titulo: 'Reservas de Hoje',
+          valor: String(reservasHoje),
+          detalhe: proxima
+            ? `Próxima: ${proxima.espaco} em ${formatarData(dataLocal(proxima.inicio))}`
+            : 'Nenhuma reserva agendada',
+          icone: CalendarDays,
+          cor: 'text-primary bg-accent',
+        },
     {
       titulo: 'Visitantes Esperados Hoje',
       valor: String(esperados),
       detalhe: aguardandoMorador
-        ? `${aguardandoMorador} aguardando confirmação do morador`
-        : 'Autorizados para hoje',
+        ? ehMorador
+          ? `${aguardandoMorador} aguardando sua confirmação`
+          : `${aguardandoMorador} aguardando confirmação do morador`
+        : ehMorador
+          ? 'Da sua unidade'
+          : 'No condomínio',
       icone: Users,
       cor: 'text-primary bg-accent',
     },
@@ -81,7 +100,7 @@ export default function Painel() {
   return (
     <AppLayout
       titulo={`Olá, ${usuario?.nome.split(' ')[0]} 👋`}
-      subtitulo={`Visão geral do Residencial Vila Aurora · ${usuario?.cargo}`}
+      subtitulo={`Visão geral${condominio ? ` do ${condominio.nome}` : ''} · ${usuario?.cargo}`}
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {indicadores.map((i) => (
@@ -102,9 +121,11 @@ export default function Painel() {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <Button className="rounded-xl" onClick={() => router.push('/reservas')}>
-          <CalendarPlus className="h-4 w-4" /> Nova Reserva
-        </Button>
+        {podeReservar && (
+          <Button className="rounded-xl" onClick={() => router.push('/reservas')}>
+            <CalendarPlus className="h-4 w-4" /> Nova Reserva
+          </Button>
+        )}
         <Button
           className="rounded-xl"
           onClick={() => router.push(ehMorador ? '/visitantes' : '/portaria')}
@@ -116,7 +137,7 @@ export default function Painel() {
         </Button>
         <Button className="rounded-xl" onClick={() => router.push('/enquetes')}>
           <Vote className="h-4 w-4" />{' '}
-          {estado.sessao?.perfil === 'sindico' ? 'Nova Enquete' : 'Votar em Enquetes'}
+          {perfil === 'sindico' ? 'Nova Enquete' : podeVotar ? 'Votar em Enquetes' : 'Ver Enquetes'}
         </Button>
       </div>
 
@@ -173,6 +194,46 @@ export default function Painel() {
         </section>
 
         <div className="space-y-5">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-foreground">Votações abertas</h2>
+              <button
+                onClick={() => router.push('/enquetes')}
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                Ver todas
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              {enquetesAbertas.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhuma votação aberta.</p>
+              )}
+              {enquetesAbertas.slice(0, 3).map((e) => (
+                <div key={e.id} className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                      {e.pergunta}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      até {formatarData(dataLocal(e.encerraEm))} · {e.total}{' '}
+                      {e.total === 1 ? 'voto' : 'votos'}
+                    </p>
+                  </div>
+                  {podeVotar &&
+                    (e.meuVoto ? (
+                      <Badge className="shrink-0 rounded-full border-0 bg-success/10 text-success">
+                        Votou
+                      </Badge>
+                    ) : (
+                      <Badge className="shrink-0 rounded-full border-0 bg-warning/15 text-warning-foreground">
+                        Falta votar
+                      </Badge>
+                    ))}
+                </div>
+              ))}
+            </div>
+          </section>
+
           <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
             <h2 className="text-base font-bold text-foreground">Agenda dos espaços</h2>
             <div className="mt-4 space-y-3">

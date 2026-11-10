@@ -39,8 +39,14 @@ const NAVEGACAO = [
   { titulo: 'Enquetes', url: '/enquetes', icone: Vote },
   { titulo: 'Administração', url: '/admin', icone: UserCheck },
 ];
+/** ["A","B","C"] -> "Blocos A, B e C" */
+function listaBlocos(blocos) {
+  if (blocos.length === 1) return `Bloco ${blocos[0]}`;
+  return `Blocos ${blocos.slice(0, -1).join(', ')} e ${blocos.at(-1)}`;
+}
+
 export function AppLayout({ titulo, subtitulo, children }) {
-  const { estado, usuario } = useCondo();
+  const { estado, usuario, condominio } = useCondo();
   const router = useRouter();
   const caminho = usePathname();
   const naoLidos = useAvisosNaoLidos(Boolean(estado.sessao) && estado.sessao.perfil !== 'admin');
@@ -93,8 +99,13 @@ export function AppLayout({ titulo, subtitulo, children }) {
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
             <Building2 className="h-4 w-4" /> Condomínio
           </div>
-          <p className="mt-2 text-sm font-semibold">Residencial Vila Aurora</p>
-          <p className="text-xs text-sidebar-foreground/60">240 unidades · Blocos A, B e C</p>
+          <p className="mt-2 text-sm font-semibold">{condominio?.nome ?? '—'}</p>
+          {condominio && (
+            <p className="text-xs text-sidebar-foreground/60">
+              {condominio.unidades} {condominio.unidades === 1 ? 'unidade' : 'unidades'}
+              {condominio.blocos.length > 0 && ` · ${listaBlocos(condominio.blocos)}`}
+            </p>
+          )}
         </div>
       </aside>
 

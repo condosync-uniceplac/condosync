@@ -36,3 +36,17 @@ export async function findUnidade(unidadeId, db = pool) {
   );
   return rows[0] ?? null;
 }
+
+/** Nome, quantidade de unidades e blocos do condomínio (cartão do menu lateral). */
+export async function findResumo(condominioId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT c.nome,
+            (SELECT count(*)::int FROM unidades u JOIN blocos b ON b.id = u.bloco_id
+              WHERE b.condominio_id = c.id) AS unidades,
+            COALESCE((SELECT array_agg(b.nome ORDER BY b.nome) FROM blocos b
+                       WHERE b.condominio_id = c.id), '{}') AS blocos
+       FROM condominios c WHERE c.id = $1`,
+    [condominioId],
+  );
+  return rows[0] ?? null;
+}
