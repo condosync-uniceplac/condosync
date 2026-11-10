@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCondo } from '@/lib/condo-store';
 import { dataLocal, turnoDaReserva } from '@/lib/turnos';
+import { useAvisos } from '@/lib/useAvisos';
 import { useReservas } from '@/lib/useReservas';
 import { useVisitas } from '@/lib/useVisitas';
 import { VisitaStatus, formatarDataHora } from '@/components/condo/VisitaStatus';
@@ -25,13 +26,10 @@ const formatarData = (iso) => {
   const [a, m, d] = iso.split('-');
   return `${d}/${m}/${a}`;
 };
-const CORES_PRIORIDADE = {
-  Urgente: 'bg-destructive/10 text-destructive',
-  Manutenção: 'bg-warning/15 text-warning-foreground',
-  Social: 'bg-accent text-accent-foreground',
-};
+
 export default function Painel() {
-  const { estado, usuario, marcarLido } = useCondo();
+  const { estado, usuario } = useCondo();
+  const { avisos, confirmarLeitura } = useAvisos();
   const router = useRouter();
   const { reservas, podeReservar } = useReservas();
   const minhas = podeReservar ? reservas.filter((r) => r.minha) : reservas;
@@ -43,7 +41,7 @@ export default function Painel() {
     (v) => ['AGUARDANDO', 'AUTORIZADO'].includes(v.status) && dataLocal(v.previsao) === hoje,
   ).length;
   const ehMorador = estado.sessao?.perfil === 'morador';
-  const naoLidos = estado.avisos.filter((a) => !a.lido).length;
+  const naoLidos = avisos.filter((a) => !a.lido).length;
   const abertos = estado.chamados.filter((c) => c.status !== 'resolvido').length;
   const indicadores = [
     {
@@ -133,24 +131,33 @@ export default function Painel() {
             </button>
           </div>
           <div className="mt-4 space-y-3">
-            {estado.avisos.slice(0, 4).map((a) => (
+            {avisos.length === 0 && (
+              <p className="text-xs text-muted-foreground">Nenhum comunicado publicado.</p>
+            )}
+            {avisos.slice(0, 4).map((a) => (
               <article
                 key={a.id}
                 className="rounded-xl border border-border p-4 transition-colors hover:border-primary/40"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className={cn('rounded-full border-0', CORES_PRIORIDADE[a.prioridade])}>
-                    {a.prioridade}
+                  {a.prioridade === 'URGENTE' && (
+                    <Badge className="rounded-full border-0 bg-destructive/10 text-destructive">
+                      Urgente
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="rounded-full">
+                    {a.categoria}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {formatarData(a.data)} · {a.autor}
+                    {formatarData(dataLocal(a.publicadoEm))} · {a.autor}
                   </span>
                   {!a.lido && (
                     <button
-                      onClick={() => {
-                        marcarLido(a.id);
-                        toast.success('Comunicado marcado como lido');
-                      }}
+                      onClick={() =>
+                        confirmarLeitura(a.id)
+                          .then(() => toast.success('Comunicado marcado como lido'))
+                          .catch((e) => toast.error(e.message))
+                      }
                       className="ml-auto text-xs font-semibold text-primary hover:underline"
                     >
                       Marcar como lido
@@ -158,7 +165,7 @@ export default function Painel() {
                   )}
                 </div>
                 <h3 className="mt-2 text-sm font-semibold text-foreground">{a.titulo}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{a.texto}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{a.corpo}</p>
               </article>
             ))}
           </div>

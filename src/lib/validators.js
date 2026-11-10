@@ -227,3 +227,22 @@ export const espacoSchema = z.object({
     .refine((v) => Math.round(v * 100) === v * 100, 'Use no máximo 2 casas decimais.'),
   ativo: z.boolean().default(true),
 });
+
+// RN.20 — aviso do mural (campos do formulário; o anexo é validado à parte)
+export const avisoSchema = z.object({
+  titulo: z
+    .string({ error: 'Informe o título.' })
+    .trim()
+    .min(5, 'O título deve ter pelo menos 5 caracteres.')
+    .max(200, 'Título muito longo.'),
+  corpo: z
+    .string({ error: 'Escreva o comunicado.' })
+    .trim()
+    .min(10, 'O comunicado deve ter pelo menos 10 caracteres.')
+    .max(5000, 'Comunicado muito longo.'),
+  categoriaId: z.coerce
+    .number({ error: 'Escolha a categoria.' })
+    .int()
+    .positive('Escolha a categoria.'),
+  prioridade: z.enum(['NORMAL', 'URGENTE'], { error: 'Escolha a urgência.' }),
+});
