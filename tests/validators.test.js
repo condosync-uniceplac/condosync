@@ -86,7 +86,8 @@ describe('registerSchema (versão 2)', () => {
     expect(registerSchema.safeParse(base).success).toBe(true);
   });
 
-  it('não permite se cadastrar como síndico ou administrador', () => {
+  it('cadastro público é só para moradores', () => {
+    expect(registerSchema.safeParse({ ...base, perfil: 'PORTARIA' }).success).toBe(false);
     expect(registerSchema.safeParse({ ...base, perfil: 'SINDICO' }).success).toBe(false);
     expect(registerSchema.safeParse({ ...base, perfil: 'ADMIN' }).success).toBe(false);
   });

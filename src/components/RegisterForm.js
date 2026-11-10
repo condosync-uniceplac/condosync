@@ -6,10 +6,9 @@ import PasswordChecklist from './PasswordChecklist';
 import styles from './AuthCard.module.css';
 import { formatCpf, formatTelefone } from '@/lib/masks';
 
-const PERFIS = [
-  { value: 'MORADOR', label: 'Morador' },
-  { value: 'PORTARIA', label: 'Portaria' },
-];
+// O cadastro público é só para moradores: o síndico é designado pela administração
+// e as contas da portaria são criadas pelo síndico.
+const perfil = 'MORADOR';
 
 function Field({ id, label, error, hint, children }) {
   return (
@@ -33,7 +32,6 @@ export default function RegisterForm() {
   const [condominios, setCondominios] = useState([]);
   const [unidades, setUnidades] = useState([]);
   const [condominioId, setCondominioId] = useState('');
-  const [perfil, setPerfil] = useState('MORADOR');
   const [erro, setErro] = useState('');
   const [campos, setCampos] = useState({});
   const [sucesso, setSucesso] = useState(null);
@@ -47,7 +45,12 @@ export default function RegisterForm() {
   useEffect(() => {
     fetch('/api/condominios')
       .then((r) => r.json())
-      .then((d) => setCondominios(d.condominios ?? []))
+      .then((d) => {
+        const lista = d.condominios ?? [];
+        setCondominios(lista);
+        // Com um único condomínio, ele já vem selecionado
+        if (lista.length === 1) setCondominioId(String(lista[0].id));
+      })
       .catch(() => setErro('Não foi possível carregar os condomínios.'));
   }, []);
 
@@ -203,42 +206,38 @@ export default function RegisterForm() {
       </div>
 
       <div className={styles.grid}>
-        <Field id="perfil" label="Perfil" error={campos.perfil}>
-          <select id="perfil" value={perfil} onChange={(e) => setPerfil(e.target.value)}>
-            {PERFIS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field id="condominioId" label="Condomínio" error={campos.condominioId}>
-          <select
-            id="condominioId"
-            value={condominioId}
-            onChange={(e) => setCondominioId(e.target.value)}
-            required
-          >
-            <option value="">Selecione...</option>
-            {condominios.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-        </Field>
-        {perfil === 'MORADOR' && (
-          <Field id="unidadeId" label="Unidade" error={campos.unidadeId}>
-            <select id="unidadeId" name="unidadeId" disabled={!condominioId} required>
+        {condominios.length !== 1 && (
+          <Field id="condominioId" label="Condomínio" error={campos.condominioId}>
+            <select
+              id="condominioId"
+              value={condominioId}
+              onChange={(e) => setCondominioId(e.target.value)}
+              required
+            >
               <option value="">Selecione...</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  Bloco {u.bloco} - {u.numero}
+              {condominios.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
                 </option>
               ))}
             </select>
           </Field>
         )}
+        <Field
+          id="unidadeId"
+          label="Unidade"
+          error={campos.unidadeId}
+          hint="O síndico confere a unidade antes de aprovar o cadastro."
+        >
+          <select id="unidadeId" name="unidadeId" disabled={!condominioId} required>
+            <option value="">Selecione...</option>
+            {unidades.map((u) => (
+              <option key={u.id} value={u.id}>
+                Bloco {u.bloco} - {u.numero}
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
 
       <label className={styles.checkbox}>
