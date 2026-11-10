@@ -280,3 +280,36 @@ export const statusChamadoSchema = z.object({
 
 // RN.22 — comentário de acompanhamento
 export const comentarioChamadoSchema = z.object({ comentario: comentarioChamado });
+
+// RN.24 — nova enquete (o síndico escolhe o último dia de votação)
+export const enqueteSchema = z.object({
+  pergunta: z
+    .string({ error: 'Escreva a pergunta.' })
+    .trim()
+    .min(5, 'A pergunta deve ter pelo menos 5 caracteres.')
+    .max(300, 'Pergunta muito longa.'),
+  descricao: z
+    .string()
+    .trim()
+    .max(1000, 'Descrição muito longa.')
+    .optional()
+    .transform((v) => v || undefined),
+  encerraEm: z
+    .string({ error: 'Escolha a data de encerramento.' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Escolha a data de encerramento.'),
+  opcoes: z
+    .array(z.string().trim().min(1, 'Preencha todas as opções.').max(200, 'Opção muito longa.'), {
+      error: 'Informe as opções.',
+    })
+    .min(2, 'Informe pelo menos 2 opções.')
+    .max(10, 'No máximo 10 opções.')
+    .refine(
+      (ops) => new Set(ops.map((o) => o.toLocaleLowerCase('pt-BR'))).size === ops.length,
+      'As opções não podem se repetir.',
+    ),
+});
+
+// RN.24 — voto da unidade
+export const votoSchema = z.object({
+  opcaoId: z.coerce.number({ error: 'Escolha uma opção.' }).int().positive('Escolha uma opção.'),
+});
