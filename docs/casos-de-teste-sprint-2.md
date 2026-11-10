@@ -67,7 +67,7 @@ Executado pelo QA em produção, com Chrome no Windows 11.
 | ❌ Falhou                     | 0          | —                                                        |
 | ⚠️ Não executado em produção¹ | 12         | CT-39, CT-46, CT-48, CT-53 a CT-61                       |
 
-¹ Um impedimento no ambiente de teste não permitiu executar e registrar esses casos em produção durante a sprint. Eles passaram sem falhas na pré-validação (testes automatizados e de API, PRs #35 e #36) e serão reexecutados na Sprint 3.
+¹ Um impedimento no ambiente de teste não permitiu executar e registrar esses casos em produção durante a sprint. Eles passaram sem falhas na pré-validação (testes automatizados e de API, PRs #35 e #36) e serão reexecutados na Sprint 3 (ver [casos-de-teste-sprint-3.md](casos-de-teste-sprint-3.md#7-reexecução-dos-casos-pendentes-da-sprint-2)).
 
 Observações:
 
