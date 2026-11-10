@@ -32,7 +32,7 @@ export async function create({ usuarioId, condominioId, perfil, unidadeId, ativo
 /** Cadastros aguardando aprovação no condomínio (vínculos inativos). */
 export async function listPendentesByCondominio(condominioId, db = pool) {
   const { rows } = await db.query(
-    `SELECT v.id, v.perfil, v.criado_em,
+    `SELECT v.id, v.perfil, v.criado_em, v.unidade_id,
             u.nome_completo, u.email, u.telefone,
             un.numero AS unidade_numero, b.nome AS bloco_nome
        FROM vinculos_condominio v
@@ -49,7 +49,7 @@ export async function listPendentesByCondominio(condominioId, db = pool) {
 /** Vínculo pendente do condomínio (ou null): garante que o síndico só age no próprio condomínio. */
 export async function findPendente(id, condominioId, db = pool) {
   const { rows } = await db.query(
-    `SELECT id, usuario_id, perfil FROM vinculos_condominio
+    `SELECT id, usuario_id, perfil, unidade_id FROM vinculos_condominio
       WHERE id = $1 AND condominio_id = $2 AND NOT ativo AND encerrado_em IS NULL`,
     [id, condominioId],
   );
@@ -139,4 +139,63 @@ export async function alterarPapel(vinculoId, { perfil, ativo }, db = pool) {
       WHERE id = $1`,
     [vinculoId, perfil, ativo],
   );
+}
+
+/** Moradores ativos com unidade (inclui o síndico que mora no condomínio). */
+export async function listResidentes(condominioId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.id, v.perfil, v.unidade_id, u.nome_completo, u.email, u.telefone
+       FROM vinculos_condominio v
+       JOIN usuarios u ON u.id = v.usuario_id
+      WHERE v.condominio_id = $1 AND v.ativo AND v.unidade_id IS NOT NULL
+        AND v.perfil IN ('MORADOR', 'SINDICO')
+      ORDER BY u.nome_completo`,
+    [condominioId],
+  );
+  return rows;
+}
+
+/** Vínculo ativo do condomínio com um dos perfis informados (ou null). */
+export async function findAtivo(id, condominioId, perfis, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.id, v.usuario_id, v.perfil, v.unidade_id, u.nome_completo
+       FROM vinculos_condominio v
+       JOIN usuarios u ON u.id = v.usuario_id
+      WHERE v.id = $1 AND v.condominio_id = $2 AND v.ativo AND v.perfil = ANY($3::perfil_acesso[])`,
+    [id, condominioId, perfis],
+  );
+  return rows[0] ?? null;
+}
+
+/** Troca a unidade do vínculo e derruba as sessões abertas dele. */
+export async function definirUnidade(id, unidadeId, { derrubarSessao = true } = {}, db = pool) {
+  await db.query(
+    `UPDATE vinculos_condominio
+        SET unidade_id = $2,
+            sessao_versao = sessao_versao + CASE WHEN $3 THEN 1 ELSE 0 END
+      WHERE id = $1`,
+    [id, unidadeId, derrubarSessao],
+  );
+}
+
+/** Encerra o vínculo (morador que saiu, porteiro desligado): sem acesso e fora da fila. */
+export async function encerrar(id, db = pool) {
+  await db.query(
+    `UPDATE vinculos_condominio
+        SET ativo = false, encerrado_em = now(), sessao_versao = sessao_versao + 1
+      WHERE id = $1`,
+    [id],
+  );
+}
+
+export async function listPortaria(condominioId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.id, v.criado_em, u.nome_completo, u.email, u.telefone
+       FROM vinculos_condominio v
+       JOIN usuarios u ON u.id = v.usuario_id
+      WHERE v.condominio_id = $1 AND v.ativo AND v.perfil = 'PORTARIA'
+      ORDER BY u.nome_completo`,
+    [condominioId],
+  );
+  return rows;
 }

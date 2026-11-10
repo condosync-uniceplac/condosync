@@ -35,8 +35,9 @@ export const senhaForteSchema = z
 const idSchema = z.coerce.number().int().positive();
 
 // Perfis que podem se cadastrar pela tela pública (ADMIN é criado só via banco)
-// Síndico não se cadastra: é um morador designado pelo administrador ou pelo síndico anterior.
-export const PERFIS_CADASTRO = ['MORADOR', 'PORTARIA'];
+// Cadastro público é só para moradores: o síndico é designado pelo administrador
+// e as contas da portaria são criadas pelo síndico (RN.06 revisada).
+export const PERFIS_CADASTRO = ['MORADOR'];
 
 export const registerSchema = z
   .object({
@@ -190,4 +191,18 @@ export const visitaNaoPrevistaSchema = visitanteBase.and(
 export const ACOES_VISITA = ['AUTORIZAR', 'RECUSAR', 'CANCELAR', 'ENTRADA', 'SAIDA'];
 export const acaoVisitaSchema = z.object({
   acao: z.enum(ACOES_VISITA, { error: 'Ação inválida.' }),
+});
+
+// RN.06 (revisada) — conta da portaria criada pelo síndico (a senha é definida pelo convite)
+export const contaPortariaSchema = z.object({
+  nome: z.string().trim().min(3, 'Informe o nome completo.').max(150),
+  email: z.string().trim().toLowerCase().email('E-mail inválido.').max(254),
+  telefone: z.preprocess(
+    onlyDigits,
+    z.string().regex(/^\d{10,11}$/, 'Telefone deve ter DDD + número (10 ou 11 dígitos).'),
+  ),
+  cpf: cpfSchema,
+  dataNascimento: z.iso
+    .date('Data de nascimento inválida.')
+    .refine((v) => v <= new Date().toISOString().slice(0, 10), 'Data de nascimento no futuro.'),
 });

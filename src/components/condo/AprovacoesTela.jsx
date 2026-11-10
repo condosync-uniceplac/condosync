@@ -4,7 +4,13 @@ import { Check, UserCheck, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { MoradoresAba } from '@/components/condo/MoradoresAba';
+import { PortariaAba } from '@/components/condo/PortariaAba';
 import { SindicaturaCard } from '@/components/condo/SindicaturaCard';
+import { SELECT_CLASSE } from '@/components/condo/campos-visitante';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatTelefone } from '@/lib/masks';
+import { lerResposta } from '@/lib/apiClient';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -19,6 +25,15 @@ export default function AprovacoesTela() {
   const [cadastros, setCadastros] = useState(null);
   const [erro, setErro] = useState('');
   const [processando, setProcessando] = useState(null);
+  const [unidades, setUnidades] = useState([]);
+  const [unidadeEscolhida, setUnidadeEscolhida] = useState({});
+
+  useEffect(() => {
+    fetch('/api/admin/moradores', { cache: 'no-store' })
+      .then(lerResposta)
+      .then((d) => setUnidades(d.unidades))
+      .catch(() => setUnidades([]));
+  }, []);
 
   const carregar = useCallback(async () => {
     setErro('');
@@ -44,7 +59,10 @@ export default function AprovacoesTela() {
       const res = await fetch(`/api/admin/cadastros/${cadastro.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao }),
+        body: JSON.stringify({
+          acao,
+          unidadeId: unidadeEscolhida[cadastro.id] ?? cadastro.unidadeId ?? undefined,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Não foi possível concluir a ação.');
@@ -62,75 +80,120 @@ export default function AprovacoesTela() {
   return (
     <AppLayout
       titulo="Administração"
-      subtitulo="Síndico do condomínio e aprovação de novos cadastros"
+      subtitulo="Síndico, cadastros, moradores por unidade e contas da portaria"
     >
       <SindicaturaCard />
-      <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-        <div className="flex items-center gap-2">
-          <UserCheck className="h-5 w-5 text-primary" />
-          <h2 className="text-base font-bold text-foreground">Cadastros pendentes</h2>
-          {cadastros && cadastros.length > 0 && (
-            <Badge className="rounded-full">{cadastros.length}</Badge>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Novos usuários só acessam o CondoSync depois que o síndico aprova o cadastro.
-        </p>
+      <Tabs defaultValue="cadastros">
+        <TabsList className="rounded-xl">
+          <TabsTrigger value="cadastros" className="rounded-lg">
+            Cadastros pendentes{cadastros?.length ? ` (${cadastros.length})` : ''}
+          </TabsTrigger>
+          <TabsTrigger value="moradores" className="rounded-lg">
+            Moradores
+          </TabsTrigger>
+          <TabsTrigger value="portaria" className="rounded-lg">
+            Portaria
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="moradores" className="mt-5">
+          <MoradoresAba />
+        </TabsContent>
+        <TabsContent value="portaria" className="mt-5">
+          <PortariaAba />
+        </TabsContent>
+        <TabsContent value="cadastros" className="mt-5">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-bold text-foreground">Cadastros pendentes</h2>
+              {cadastros && cadastros.length > 0 && (
+                <Badge className="rounded-full">{cadastros.length}</Badge>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Novos moradores só acessam o CondoSync depois da aprovação. Confira a unidade
+              informada e corrija se o morador escolheu o bloco ou o apartamento errado.
+            </p>
 
-        {erro && (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            {erro}
-          </p>
-        )}
+            {erro && (
+              <p role="alert" className="mt-4 text-sm text-destructive">
+                {erro}
+              </p>
+            )}
 
-        {cadastros === null && (
-          <p className="mt-4 text-sm text-muted-foreground">Carregando cadastros...</p>
-        )}
+            {cadastros === null && (
+              <p className="mt-4 text-sm text-muted-foreground">Carregando cadastros...</p>
+            )}
 
-        {cadastros?.length === 0 && !erro && (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Nenhum cadastro aguardando aprovação.
-          </p>
-        )}
+            {cadastros?.length === 0 && !erro && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Nenhum cadastro aguardando aprovação.
+              </p>
+            )}
 
-        {cadastros?.length > 0 && (
-          <ul className="mt-4 divide-y divide-border">
-            {cadastros.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-foreground">{c.nome}</span>
-                    <Badge variant="outline" className="rounded-full">
-                      {PERFIL_LABEL[c.perfil] ?? c.perfil}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {c.email}
-                    {c.unidade ? ` · ${c.unidade}` : ''} · cadastrado em {formatarData(c.criadoEm)}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => decidir(c, 'aprovar')}
-                    disabled={processando === c.id}
-                  >
-                    <Check className="h-4 w-4" /> Aprovar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => decidir(c, 'recusar')}
-                    disabled={processando === c.id}
-                  >
-                    <X className="h-4 w-4" /> Recusar
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+            {cadastros?.length > 0 && (
+              <ul className="mt-4 divide-y divide-border">
+                {cadastros.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-foreground">{c.nome}</span>
+                        <Badge variant="outline" className="rounded-full">
+                          {PERFIL_LABEL[c.perfil] ?? c.perfil}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {c.email} · {formatTelefone(c.telefone)} · cadastrado em{' '}
+                        {formatarData(c.criadoEm)}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {c.perfil === 'MORADOR' && (
+                        <select
+                          aria-label={`Unidade de ${c.nome}`}
+                          value={unidadeEscolhida[c.id] ?? c.unidadeId ?? ''}
+                          onChange={(e) =>
+                            setUnidadeEscolhida({
+                              ...unidadeEscolhida,
+                              [c.id]: Number(e.target.value),
+                            })
+                          }
+                          className={`${SELECT_CLASSE.replace('w-full', '')} h-9 w-56`}
+                        >
+                          {unidades.length === 0 && c.unidade && (
+                            <option value={c.unidadeId}>{c.unidade}</option>
+                          )}
+                          {unidades.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.rotulo}
+                              {u.id === c.unidadeId ? ' (informada)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => decidir(c, 'aprovar')}
+                        disabled={processando === c.id}
+                      >
+                        <Check className="h-4 w-4" /> Aprovar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => decidir(c, 'recusar')}
+                        disabled={processando === c.id}
+                      >
+                        <X className="h-4 w-4" /> Recusar
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </TabsContent>
+      </Tabs>
     </AppLayout>
   );
 }

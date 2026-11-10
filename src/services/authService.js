@@ -16,6 +16,7 @@ const LOGIN_INVALIDO = 'Credenciais inválidas.';
 const MAX_TENTATIVAS = 5;
 const JANELA_TENTATIVAS_MIN = 15;
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hora
+const CONVITE_TTL_MS = 48 * 60 * 60 * 1000; // 48 horas
 
 /**
  * Cadastro de usuário + vínculo com o condomínio + aceite dos termos vigentes.
@@ -137,28 +138,49 @@ export async function login({ tipo, valor, senha }, { ip } = {}) {
 export async function requestPasswordReset({ email }) {
   const usuario = await usuariosRepo.findByEmail(email);
   if (!usuario || !usuario.ativo) return;
-
-  const token = randomBytes(32).toString('base64url');
-  const tokenHash = hashToken(token);
-
-  await withTransaction(async (client) => {
-    await recuperacoesRepo.invalidarPendentes(usuario.id, client);
-    await recuperacoesRepo.create(
-      { usuarioId: usuario.id, tokenHash, expiraEm: new Date(Date.now() + RESET_TTL_MS) },
-      client,
-    );
-  });
-
-  const link = `${getEnv().APP_URL}/redefinir-senha?token=${token}`;
-  await enviarEmail({
-    para: usuario.email,
+  await enviarLinkDeSenha(usuario, {
+    ttlMs: RESET_TTL_MS,
     assunto: 'CondoSync — redefinição de senha',
-    texto:
+    texto: (link) =>
       `Olá, ${usuario.nome_completo}.\n\n` +
       `Recebemos um pedido para redefinir a sua senha no CondoSync.\n` +
       `Use o link abaixo em até 1 hora:\n\n${link}\n\n` +
       'Se você não fez esse pedido, ignore este e-mail: sua senha continua a mesma.',
   });
+}
+
+/**
+ * Convite para conta criada pela administração (ex.: portaria): o usuário define a senha.
+ * Retorna { enviado, link } para quem criou a conta repassar o link se o e-mail falhar.
+ */
+export async function enviarConvite(usuario) {
+  return enviarLinkDeSenha(usuario, {
+    ttlMs: CONVITE_TTL_MS,
+    assunto: 'CondoSync — sua conta foi criada',
+    texto: (link) =>
+      `Olá, ${usuario.nome_completo}.\n\n` +
+      'A administração do condomínio criou sua conta de acesso ao CondoSync.\n' +
+      `Defina sua senha pelo link abaixo (válido por 48 horas):\n\n${link}\n\n` +
+      'Depois, entre com este e-mail e a senha que você criou.',
+  });
+}
+
+async function enviarLinkDeSenha(usuario, { ttlMs, assunto, texto }) {
+  const token = randomBytes(32).toString('base64url');
+  await withTransaction(async (client) => {
+    await recuperacoesRepo.invalidarPendentes(usuario.id, client);
+    await recuperacoesRepo.create(
+      {
+        usuarioId: usuario.id,
+        tokenHash: hashToken(token),
+        expiraEm: new Date(Date.now() + ttlMs),
+      },
+      client,
+    );
+  });
+  const link = `${getEnv().APP_URL}/redefinir-senha?token=${token}`;
+  const r = await enviarEmail({ para: usuario.email, assunto, texto: texto(link) });
+  return { enviado: Boolean(r?.enviado), link };
 }
 
 /** Indica se o link de redefinição ainda pode ser usado (não usado e não expirado). */

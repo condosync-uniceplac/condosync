@@ -6,15 +6,18 @@ import { aprovar, recusar } from '@/services/cadastrosService';
 
 const PERFIS_GESTAO = ['SINDICO', 'ADMIN'];
 const idSchema = z.coerce.number().int().positive();
-const bodySchema = z.object({ acao: z.enum(['aprovar', 'recusar'], { error: 'Ação inválida.' }) });
+const bodySchema = z.object({
+  acao: z.enum(['aprovar', 'recusar'], { error: 'Ação inválida.' }),
+  unidadeId: z.coerce.number().int().positive().optional(),
+});
 
-// POST /api/admin/cadastros/:id  { acao: 'aprovar' | 'recusar' }
+// POST /api/admin/cadastros/:id  { acao: 'aprovar' | 'recusar', unidadeId? } (unidade corrigida pelo síndico)
 export async function POST(request, { params }) {
   try {
     const session = await requireSession(PERFIS_GESTAO);
     const id = parseWith(idSchema, (await params).id);
-    const { acao } = parseWith(bodySchema, await readJson(request));
-    if (acao === 'aprovar') await aprovar(session, id);
+    const { acao, unidadeId } = parseWith(bodySchema, await readJson(request));
+    if (acao === 'aprovar') await aprovar(session, id, { unidadeId });
     else await recusar(session, id);
     return NextResponse.json({ ok: true, acao });
   } catch (err) {
