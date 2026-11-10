@@ -1,5 +1,13 @@
+/**
+ * Testes automatizados (Vitest) de enquetes (enquetesService): criação, prazos e voto por unidade (RN.24).
+ * Rodam com `npm test` e em todo Pull Request (GitHub Actions).
+ * describe agrupa os casos; cada it(...) é um caso de teste; expect(...) confere o resultado.
+ */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// vi.mock troca o banco/repositórios por funções falsas: o teste confere só a regra de negócio,
+// sem precisar de um banco de verdade.
 vi.mock('@/lib/db', () => ({ withTransaction: (fn) => fn('tx'), query: vi.fn() }));
 vi.mock('@/repositories/enquetesRepository', () => ({
   listByCondominio: vi.fn(),
@@ -27,6 +35,7 @@ const agora = new Date('2026-11-10T12:00:00-03:00');
 const dados = { pergunta: 'Pintar a fachada?', encerraEm: '2026-11-20', opcoes: ['Sim', 'Não'] };
 
 describe('enquetesService (RN.24)', () => {
+  // Antes de cada teste: zera as funções falsas e define as respostas padrão.
   beforeEach(() => {
     vi.clearAllMocks();
     repo.create.mockResolvedValue({ id: 5 });

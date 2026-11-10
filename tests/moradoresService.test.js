@@ -1,5 +1,13 @@
+/**
+ * Testes automatizados (Vitest) de gestão de moradores e contas da portaria (moradoresService).
+ * Rodam com `npm test` e em todo Pull Request (GitHub Actions).
+ * describe agrupa os casos; cada it(...) é um caso de teste; expect(...) confere o resultado.
+ */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// vi.mock troca o banco/repositórios por funções falsas: o teste confere só a regra de negócio,
+// sem precisar de um banco de verdade.
 vi.mock('@/lib/db', () => ({ withTransaction: (fn) => fn('tx'), query: vi.fn() }));
 vi.mock('@/lib/password', () => ({ hashPassword: vi.fn(async () => 'hash') }));
 vi.mock('@/services/authService', () => ({

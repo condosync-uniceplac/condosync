@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Tela de Reservas: espaços disponíveis, nova reserva por turno, minhas reservas e,
+ * para o síndico/portaria, as reservas do condomínio (RF.09 / RN.12).
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { CalendarDays, CheckCircle2, Loader2, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -28,6 +34,7 @@ import {
 import { useReservas } from '@/lib/useReservas';
 import { cn } from '@/lib/utils';
 
+// Formatações de data e de valor em reais.
 const formatarData = (iso) => {
   const [a, m, d] = iso.split('-');
   return `${d}/${m}/${a}`;
@@ -36,8 +43,10 @@ const taxa = (valor) =>
   valor > 0 ? valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Isento';
 
 export default function Reservas() {
+  // Dados e ações vêm do hook useReservas.
   const { podeReservar, espacos, reservas, ocupacao, carregando, erro, criar, cancelar } =
     useReservas();
+  // Estado do formulário de reserva (espaço, data, turno e convidados).
   const [espaco, setEspaco] = useState(null);
   const [data, setData] = useState('');
   const [turno, setTurno] = useState(TURNOS[0].id);
@@ -45,6 +54,7 @@ export default function Reservas() {
   const [enviando, setEnviando] = useState(false);
   const hoje = dataLocal(new Date());
 
+  // Abre o formulário de reserva do espaço escolhido.
   const abrir = (e) => {
     setEspaco(e);
     setData('');
@@ -52,6 +62,7 @@ export default function Reservas() {
     setConvidados(String(Math.min(10, e.capacidade)));
   };
 
+  // O turno fica indisponível se já há reserva que se sobrepõe nesse espaço e data.
   const indisponivel = (turnoId) => {
     if (!espaco || !data) return false;
     const intervalo = intervaloDoTurno(data, turnoId);
@@ -59,6 +70,7 @@ export default function Reservas() {
     return ocupacao.some((o) => o.espacoId === espaco.id && sobrepoe(o, intervalo));
   };
 
+  // Envia a reserva.
   const confirmar = async () => {
     if (!espaco) return;
     if (!data) {
@@ -81,6 +93,7 @@ export default function Reservas() {
     }
   };
 
+  // Cancela uma reserva depois de confirmar.
   const onCancelar = async (r) => {
     try {
       await cancelar(r.id);
@@ -90,8 +103,10 @@ export default function Reservas() {
     }
   };
 
+  // Quantas reservas futuras o espaço tem.
   const agendadas = (id) => ocupacao.filter((o) => o.espacoId === id).length;
 
+  // Desenho da tela (JSX).
   return (
     <AppLayout
       titulo="Reservas de Áreas Comuns"

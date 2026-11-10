@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Aba Moradores da Administração: unidades com seus moradores; mover de unidade e remover.
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { Crown, Home, UserMinus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -11,10 +16,12 @@ import { formatTelefone } from '@/lib/masks';
 
 /** RN.04 (revisada): moradores por unidade — trocar de unidade e encerrar vínculo. */
 export function MoradoresAba() {
+  // Estado: unidades com moradores, busca e filtro "só ocupadas".
   const [unidades, setUnidades] = useState(null);
   const [busca, setBusca] = useState('');
   const [soOcupadas, setSoOcupadas] = useState(true);
 
+  // Busca as unidades e moradores na API.
   const carregar = useCallback(async () => {
     try {
       const d = await lerResposta(await fetch('/api/admin/moradores', { cache: 'no-store' }));
@@ -29,6 +36,7 @@ export function MoradoresAba() {
     carregar();
   }, [carregar]);
 
+  // Move o morador para outra unidade.
   const mover = async (m, unidadeId) => {
     const destino = unidades.find((u) => String(u.id) === String(unidadeId));
     if (!destino || !window.confirm(`Mover ${m.nome} para ${destino.rotulo}?`)) return;
@@ -41,6 +49,7 @@ export function MoradoresAba() {
     }
   };
 
+  // Remove o morador do condomínio depois de confirmar.
   const remover = async (m) => {
     if (!window.confirm(`Remover ${m.nome} do condomínio? Ele perde o acesso ao CondoSync.`))
       return;

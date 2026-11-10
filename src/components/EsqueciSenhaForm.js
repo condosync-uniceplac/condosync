@@ -1,13 +1,19 @@
 'use client';
 
+/**
+ * Formulário "Esqueci minha senha": envia o e-mail para receber o link de redefinição.
+ */
+
 import { useState } from 'react';
 import styles from './AuthCard.module.css';
 
 export default function EsqueciSenhaForm() {
+  // Estado da tela: mensagem de erro, mensagem de sucesso e envio em andamento.
   const [erro, setErro] = useState('');
   const [mensagem, setMensagem] = useState('');
   const [enviando, setEnviando] = useState(false);
 
+  // Envia o e-mail para a API; a resposta é sempre a mesma, exista ou não a conta.
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');
@@ -32,10 +38,12 @@ export default function EsqueciSenhaForm() {
     }
   }
 
+  // Depois do envio, mostra só a confirmação.
   if (mensagem) {
     return <p className={styles.success}>{mensagem}</p>;
   }
 
+  // Desenho da tela (JSX).
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
       {erro && (

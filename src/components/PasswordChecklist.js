@@ -1,3 +1,7 @@
+/**
+ * Lista dos critérios de senha forte, marcando os que a senha digitada já atende.
+ */
+
 import { avaliarSenha } from '@/lib/passwordRules';
 import styles from './AuthCard.module.css';
 

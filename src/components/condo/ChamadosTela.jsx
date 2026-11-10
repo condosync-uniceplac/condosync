@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Tela de Chamados: quadro Aberto/Em análise/Resolvido, abertura com foto e detalhe com
+ * histórico. Os botões de status aparecem conforme o perfil (RN.22).
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { ImageIcon, Loader2, MessageSquare, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -21,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useChamados } from '@/lib/useChamados';
 import { cn } from '@/lib/utils';
 
+// Colunas do quadro e rótulos de status, urgência e perfil.
 const COLUNAS = [
   { id: 'ABERTO', titulo: 'Aberto', cor: 'bg-destructive' },
   { id: 'EM_ANALISE', titulo: 'Em Análise', cor: 'bg-warning' },
@@ -35,6 +42,7 @@ const URGENCIA = {
 const PERFIL = { MORADOR: 'Morador', PORTARIA: 'Portaria', SINDICO: 'Síndico', ADMIN: 'Admin' };
 const vazio = { titulo: '', descricao: '', categoriaId: '', urgencia: 'MEDIA' };
 
+// Data e hora no fuso de Brasília.
 const dataHora = (iso) =>
   new Date(iso).toLocaleString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -53,6 +61,7 @@ function rotuloAcao(atual, destino) {
   return 'Voltar para Aberto';
 }
 
+// Etiqueta colorida da urgência.
 function UrgenciaBadge({ urgencia }) {
   const u = URGENCIA[urgencia];
   return (
@@ -74,13 +83,16 @@ export default function Chamados() {
     comentar,
     detalhar,
   } = useChamados();
+  // Morador vê só os próprios chamados e não muda status.
   const ehMorador = perfil === 'MORADOR';
 
+  // Estado do formulário de novo chamado.
   const [novo, setNovo] = useState(false);
   const [form, setForm] = useState(vazio);
   const [arquivo, setArquivo] = useState(null);
   const [salvando, setSalvando] = useState(false);
 
+  // Estado do detalhe: chamado aberto, histórico, comentário digitado e ação em andamento.
   const [aberto, setAberto] = useState(null); // id do chamado no detalhe
   const [detalhe, setDetalhe] = useState(null);
   const [comentario, setComentario] = useState('');
@@ -88,12 +100,14 @@ export default function Chamados() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
+  // Abre o formulário de novo chamado com a primeira categoria selecionada.
   const abrirNovo = () => {
     setForm({ ...vazio, categoriaId: categorias[0] ? String(categorias[0].id) : '' });
     setArquivo(null);
     setNovo(true);
   };
 
+  // Envia o novo chamado (com a foto, se houver).
   const enviar = async () => {
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
@@ -110,6 +124,7 @@ export default function Chamados() {
     }
   };
 
+  // Busca o chamado com o histórico.
   const carregarDetalhe = useCallback(
     async (id) => {
       try {
@@ -122,6 +137,7 @@ export default function Chamados() {
     [detalhar],
   );
 
+  // Ao abrir/fechar o detalhe, carrega os dados e limpa o comentário.
   useEffect(() => {
     if (aberto) carregarDetalhe(aberto);
     else setDetalhe(null);
@@ -129,6 +145,7 @@ export default function Chamados() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto]);
 
+  // Executa uma ação, mostra o aviso e recarrega o detalhe.
   const executar = async (chave, acao, sucesso) => {
     setEnviando(chave);
     try {
@@ -143,6 +160,7 @@ export default function Chamados() {
     }
   };
 
+  // Muda o status (levando o comentário, se houver).
   const mover = (destino) =>
     executar(
       destino,
@@ -150,11 +168,13 @@ export default function Chamados() {
       `Chamado movido para "${ROTULO_STATUS[destino]}".`,
     );
 
+  // Registra só o comentário.
   const registrarComentario = () =>
     executar('comentario', () => comentar(aberto, comentario.trim()), 'Acompanhamento registrado.');
 
   const c = detalhe?.chamado;
 
+  // Desenho da tela (JSX).
   return (
     <AppLayout
       titulo="Chamados & Ocorrências"

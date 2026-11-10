@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Tela Visão Geral: indicadores por perfil, atalhos, comunicados, votações abertas,
+ * agenda dos espaços e movimento da portaria.
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
@@ -24,12 +30,14 @@ import { useReservas } from '@/lib/useReservas';
 import { useVisitas } from '@/lib/useVisitas';
 import { VisitaStatus, formatarDataHora } from '@/components/condo/VisitaStatus';
 import { cn } from '@/lib/utils';
+// AAAA-MM-DD -> DD/MM/AAAA.
 const formatarData = (iso) => {
   const [a, m, d] = iso.split('-');
   return `${d}/${m}/${a}`;
 };
 
 export default function Painel() {
+  // Dados vindos da API pelos hooks de cada módulo.
   const { estado, usuario, condominio } = useCondo();
   const { avisos, confirmarLeitura } = useAvisos();
   const router = useRouter();
@@ -49,6 +57,7 @@ export default function Painel() {
   const naoLidos = avisos.filter((a) => !a.lido).length;
   const abertos = useChamadosAbertos();
   const perfil = estado.sessao?.perfil;
+  // Os 4 cartões do topo; o primeiro muda conforme o perfil.
   const indicadores = [
     podeReservar
       ? {
@@ -97,6 +106,7 @@ export default function Painel() {
       cor: 'text-warning-foreground bg-warning/15',
     },
   ];
+  // Desenho da tela (JSX).
   return (
     <AppLayout
       titulo={`Olá, ${usuario?.nome.split(' ')[0]} 👋`}

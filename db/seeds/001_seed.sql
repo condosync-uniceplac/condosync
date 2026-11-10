@@ -30,6 +30,7 @@ INSERT INTO usuarios (nome_completo, email, telefone, cpf, data_nascimento, senh
   ('Sandra Síndica',  'sindico@condosync.dev',  '11990000003', '33366699957', '1978-02-15',
    '$2b$10$H3O3fOzomoH.D1PT/0JBle4GrNNpr3LuDNARXrUbGgwsFTK/25jNy');
 
+-- Liga cada usuário de teste ao condomínio com o seu perfil (e unidade, quando tem).
 INSERT INTO vinculos_condominio (usuario_id, condominio_id, perfil, unidade_id)
 SELECT u.id, c.id, v.perfil::perfil_acesso,
        (SELECT un.id FROM unidades un JOIN blocos b ON b.id = un.bloco_id
@@ -48,6 +49,7 @@ INSERT INTO termos_documentos (tipo, versao, conteudo) VALUES
   ('TERMOS_USO', '1.0-dev', 'Termos de Uso do CondoSync (texto provisório para desenvolvimento).'),
   ('POLITICA_PRIVACIDADE', '1.0-dev', 'Política de Privacidade do CondoSync (texto provisório para desenvolvimento).');
 
+-- Marca que os usuários de teste aceitaram os termos.
 INSERT INTO aceites_termos (usuario_id, termo_id, ip)
 SELECT u.id, t.id, '127.0.0.1'::inet
 FROM usuarios u CROSS JOIN termos_documentos t

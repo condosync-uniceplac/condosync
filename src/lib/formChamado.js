@@ -1,3 +1,7 @@
+/**
+ * Leitura do formulário de chamado enviado com foto (multipart/form-data).
+ */
+
 import { AppError } from './errors';
 import { parseWith } from './http';
 import { chamadoSchema } from './validators';
@@ -10,12 +14,14 @@ export async function lerFormularioChamado(request) {
   } catch {
     throw new AppError(400, 'Envie o chamado como formulário (multipart/form-data).');
   }
+  // Valida os campos de texto com as regras do chamadoSchema.
   const dados = parseWith(chamadoSchema, {
     titulo: form.get('titulo') ?? undefined,
     descricao: form.get('descricao') ?? undefined,
     categoriaId: form.get('categoriaId') ?? undefined,
     urgencia: form.get('urgencia') ?? undefined,
   });
+  // Foto opcional: se veio arquivo, guarda o nome e os bytes.
   const file = form.get('anexo');
   const arquivo =
     file && typeof file === 'object' && file.size > 0

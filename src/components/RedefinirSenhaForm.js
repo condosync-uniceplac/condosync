@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Formulário de nova senha, aberto pelo link recebido por e-mail (?token=...).
+ */
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -8,6 +12,7 @@ import styles from './AuthCard.module.css';
 
 export default function RedefinirSenhaForm() {
   const token = useSearchParams().get('token') ?? '';
+  // Estado da tela: erro, concluído, envio e o que foi digitado nos campos de senha.
   const [erro, setErro] = useState('');
   const [concluido, setConcluido] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -17,6 +22,7 @@ export default function RedefinirSenhaForm() {
   // null = verificando; true/false = resultado da verificação do link
   const [linkValido, setLinkValido] = useState(token ? null : false);
 
+  // Ao abrir, pergunta à API se o link ainda vale, para avisar logo se expirou.
   useEffect(() => {
     if (!token) return;
     let ativo = true;
@@ -34,6 +40,7 @@ export default function RedefinirSenhaForm() {
     };
   }, [token]);
 
+  // Envia a nova senha com o token do link.
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');
@@ -63,6 +70,7 @@ export default function RedefinirSenhaForm() {
     }
   }
 
+  // Telas alternativas: senha trocada, verificando o link e link inválido.
   if (concluido) {
     return (
       <div className={styles.form}>
@@ -92,6 +100,7 @@ export default function RedefinirSenhaForm() {
     );
   }
 
+  // Desenho da tela (JSX).
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
       {erro && (

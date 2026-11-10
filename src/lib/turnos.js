@@ -4,6 +4,7 @@
  */
 export const FUSO_CONDOMINIO = '-03:00';
 
+// Turnos fixos de reserva, com o horário de início e fim de cada um.
 export const TURNOS = Object.freeze([
   { id: 'MANHA', rotulo: 'Manhã (08h às 12h)', inicio: '08:00', fim: '12:00' },
   { id: 'TARDE', rotulo: 'Tarde (13h às 17h)', inicio: '13:00', fim: '17:00' },
@@ -11,6 +12,7 @@ export const TURNOS = Object.freeze([
   { id: 'DIA', rotulo: 'Dia inteiro (08h às 23h)', inicio: '08:00', fim: '23:00' },
 ]);
 
+// Só os identificadores (usados na validação).
 export const TURNO_IDS = TURNOS.map((t) => t.id);
 
 /** Antecedência mínima para o morador cancelar a própria reserva. */
@@ -31,6 +33,7 @@ export function sobrepoe(a, b) {
   return new Date(a.inicio) < new Date(b.fim) && new Date(b.inicio) < new Date(a.fim);
 }
 
+// Hora no formato 08:00, no fuso de Brasília.
 const hora = (d) =>
   new Date(d).toLocaleTimeString('pt-BR', {
     timeZone: 'America/Sao_Paulo',

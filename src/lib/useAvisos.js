@@ -1,8 +1,14 @@
 'use client';
 
+/**
+ * Hooks do mural de avisos: lista, publica, edita, remove e confirma leitura;
+ * e o contador de não lidos usado no menu e no sino.
+ */
+
 import { useCallback, useEffect, useState } from 'react';
 import { lerResposta } from '@/lib/apiClient';
 
+// Evento do navegador disparado quando o mural muda, para o contador do sino se atualizar.
 export const EVENTO_AVISOS = 'condosync:avisos-atualizados';
 const avisar = () => window.dispatchEvent(new Event(EVENTO_AVISOS));
 
@@ -12,6 +18,7 @@ export function useAvisos(categoriaId) {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
 
+  // Busca o mural na API (com o filtro de categoria, se houver).
   const recarregar = useCallback(async () => {
     try {
       const qs = categoriaId ? `?categoriaId=${categoriaId}` : '';
@@ -28,6 +35,7 @@ export function useAvisos(categoriaId) {
     recarregar();
   }, [recarregar]);
 
+  // Envia o formulário para a API, recarrega o mural e avisa o contador.
   const enviar = useCallback(
     async (url, method, formData) => {
       const r = await lerResposta(await fetch(url, { method, body: formData }));

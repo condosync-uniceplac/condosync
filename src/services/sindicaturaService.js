@@ -1,3 +1,9 @@
+/**
+ * Designação, transferência e retirada da função de síndico (RN.04 / RN.06).
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { withTransaction } from '@/lib/db';
 import { AppError } from '@/lib/errors';
 import * as vinculosRepo from '@/repositories/vinculosRepository';
@@ -12,9 +18,11 @@ import * as vinculosRepo from '@/repositories/vinculosRepository';
  */
 const PODEM_DESIGNAR = ['ADMIN', 'SINDICO'];
 
+// Texto da unidade do morador.
 const unidade = (r) =>
   r?.unidade_numero ? `Apto ${r.unidade_numero} - Bloco ${r.bloco_nome}` : null;
 
+// Síndico atual e moradores que podem ser designados.
 export async function consultar(session) {
   if (!PODEM_DESIGNAR.includes(session.perfil)) throw new AppError(403, 'Acesso negado.');
   return withTransaction(async (db) => {
@@ -34,6 +42,7 @@ export async function consultar(session) {
   });
 }
 
+// Designa (admin) ou transfere (síndico atual) a função para um morador.
 export async function designar(session, vinculoId) {
   if (!PODEM_DESIGNAR.includes(session.perfil)) throw new AppError(403, 'Acesso negado.');
   return withTransaction(async (db) => {
@@ -56,6 +65,7 @@ export async function designar(session, vinculoId) {
         db,
       );
     }
+    // Depois promove o escolhido; as sessões dos dois expiram.
     await vinculosRepo.alterarPapel(novo.id, { perfil: 'SINDICO', ativo: true }, db);
     return {
       sindico: novo.nome_completo,

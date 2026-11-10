@@ -1,3 +1,9 @@
+/**
+ * Enquetes e votações (RN.24).
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { withTransaction } from '@/lib/db';
 import { AppError } from '@/lib/errors';
 import { FUSO_CONDOMINIO, dataLocal } from '@/lib/turnos';
@@ -14,8 +20,10 @@ import * as enquetesRepo from '@/repositories/enquetesRepository';
 export const GESTAO = ['SINDICO', 'ADMIN'];
 export const PRAZO_MAXIMO_DIAS = 90;
 
+// Vota quem tem unidade: morador ou síndico que mora no condomínio.
 const podeVotar = (s) => ['MORADOR', 'SINDICO'].includes(s.perfil) && !!s.unidadeId;
 
+// Converte a linha do banco no formato da tela.
 const paraTela = (session) => (e) => ({
   id: Number(e.id),
   pergunta: e.pergunta,
@@ -32,6 +40,7 @@ const paraTela = (session) => (e) => ({
   opcoes: (e.opcoes ?? []).map((o) => ({ id: Number(o.id), texto: o.texto, votos: o.votos })),
 });
 
+// Enquetes do condomínio com o voto da unidade de quem vê.
 export async function listar(session) {
   const enquetes = await enquetesRepo.listByCondominio(session.condominioId, session.unidadeId);
   return {
@@ -41,6 +50,7 @@ export async function listar(session) {
   };
 }
 
+// Quantidade de votações abertas.
 export async function resumo(session) {
   return { abertas: await enquetesRepo.contarAbertas(session.condominioId) };
 }
@@ -65,6 +75,7 @@ function fimDoDia(data, agora) {
   return fim;
 }
 
+// Cria a enquete (só síndico/admin) com as opções, numa transação.
 export async function criar(session, dados, agora = new Date()) {
   if (!GESTAO.includes(session.perfil)) {
     throw new AppError(403, 'Apenas o síndico pode criar enquetes.');
@@ -86,6 +97,7 @@ export async function criar(session, dados, agora = new Date()) {
   });
 }
 
+// Grava ou troca o voto da unidade, se a enquete ainda estiver aberta.
 export async function votar(session, enqueteId, { opcaoId }) {
   if (!podeVotar(session)) {
     throw new AppError(403, 'Somente moradores com unidade votam nas enquetes.');
@@ -104,6 +116,7 @@ export async function votar(session, enqueteId, { opcaoId }) {
   });
 }
 
+// Encerra a votação antes do prazo (só síndico/admin).
 export async function encerrar(session, enqueteId) {
   if (!GESTAO.includes(session.perfil)) {
     throw new AppError(403, 'Apenas o síndico pode encerrar enquetes.');

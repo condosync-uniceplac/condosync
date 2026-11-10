@@ -1,3 +1,9 @@
+/**
+ * Reservas de áreas comuns (RF.09 / RN.12).
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { withTransaction } from '@/lib/db';
 import { AppError } from '@/lib/errors';
 import { ANTECEDENCIA_CANCELAMENTO_HORAS, intervaloDoTurno } from '@/lib/turnos';
@@ -18,9 +24,11 @@ const HORA_MS = 60 * 60 * 1000;
 const podeReservar = (s) =>
   s.perfil === 'MORADOR' || (s.perfil === 'SINDICO' && Boolean(s.unidadeId));
 
+// Texto da unidade de quem reservou.
 const unidadeTexto = (r) =>
   r.unidade_numero ? `Apto ${r.unidade_numero} - Bloco ${r.bloco_nome}` : null;
 
+// Converte a reserva no formato da tela (marca as do próprio usuário).
 function paraTela(r, session) {
   return {
     id: Number(r.id),
@@ -37,6 +45,7 @@ function paraTela(r, session) {
   };
 }
 
+// Espaços, reservas visíveis ao perfil e ocupação dos espaços (para a tela travar turnos).
 export async function listar(session) {
   const [espacos, reservas, ocupacao] = await Promise.all([
     reservasRepo.listEspacos(session.condominioId),
@@ -63,6 +72,7 @@ export async function listar(session) {
   };
 }
 
+// Cria a reserva conferindo turno futuro, capacidade e conflitos (do espaço e do morador).
 export async function criar(session, { espacoId, data, turno, convidados }, agora = new Date()) {
   if (!podeReservar(session)) {
     throw new AppError(403, 'Apenas moradores podem reservar áreas comuns.');
@@ -75,6 +85,7 @@ export async function criar(session, { espacoId, data, turno, convidados }, agor
     throw new AppError(422, 'Dados inválidos.', { data: 'Escolha uma data e turno futuros.' });
   }
 
+  // Tudo numa transação com travas, para dois pedidos simultâneos não passarem juntos.
   return withTransaction(async (db) => {
     const espaco = await reservasRepo.findEspacoParaReserva(espacoId, session.condominioId, db);
     if (!espaco) throw new AppError(404, 'Espaço não encontrado.');
@@ -114,6 +125,7 @@ export async function criar(session, { espacoId, data, turno, convidados }, agor
   });
 }
 
+// Cancela a reserva: o morador só a própria e com 24 h de antecedência; o síndico qualquer uma.
 export async function cancelar(session, id, agora = new Date()) {
   const gestao = GESTAO.includes(session.perfil);
   if (!gestao && session.perfil !== 'MORADOR') {

@@ -1,7 +1,12 @@
+/**
+ * Página pública /cadastro (formulário de cadastro de morador).
+ */
+
 import Link from 'next/link';
 import RegisterForm from '@/components/RegisterForm';
 import styles from '@/components/AuthCard.module.css';
 
+// Título (e descrição) da aba do navegador.
 export const metadata = { title: 'Cadastro | CondoSync' };
 
 export default function CadastroPage() {

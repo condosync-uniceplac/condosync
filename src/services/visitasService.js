@@ -1,3 +1,9 @@
+/**
+ * Portaria e controle de visitantes (RF.10 / RN.14).
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { AppError } from '@/lib/errors';
 import { formatPlaca, mascararDocumento } from '@/lib/masks';
 import { FUSO_CONDOMINIO } from '@/lib/turnos';
@@ -13,11 +19,13 @@ import * as visitasRepo from '@/repositories/visitasRepository';
  * - A listagem mostra o documento mascarado (LGPD).
  */
 const EQUIPE = ['PORTARIA', 'SINDICO', 'ADMIN'];
+// A previsão da visita pode ser até 30 minutos no passado (ex.: visitante já chegando).
 const TOLERANCIA_PREVISAO_MS = 30 * 60 * 1000;
 
 const ehEquipe = (s) => EQUIPE.includes(s.perfil);
 const ehMorador = (s) => s.perfil === 'MORADOR';
 
+// Converte a visita no formato da tela, com o documento mascarado (LGPD).
 function paraTela(v) {
   return {
     id: Number(v.id),
@@ -34,6 +42,7 @@ function paraTela(v) {
   };
 }
 
+// Morador vê as visitas da própria unidade; portaria e síndico, as do condomínio.
 export async function listar(session) {
   if (ehMorador(session)) {
     if (!session.unidadeId) return { perfil: 'MORADOR', visitas: [], unidades: [] };
@@ -129,6 +138,7 @@ const ACOES = {
   SAIDA: { de: 'PRESENTE', para: 'FINALIZADO', morador: false, equipe: true },
 };
 
+// Mensagem quando a visita já não está no status esperado para a ação.
 const MENSAGEM_STATUS = {
   AUTORIZAR: 'Esta visita não está mais aguardando confirmação.',
   RECUSAR: 'Esta visita não está mais aguardando confirmação.',
@@ -137,6 +147,7 @@ const MENSAGEM_STATUS = {
   SAIDA: 'Só é possível registrar a saída de visitante que está no condomínio.',
 };
 
+// Executa uma ação da tabela ACOES, conferindo perfil, unidade e status atual.
 export async function executarAcao(session, id, acao) {
   const regra = ACOES[acao];
   if (!regra) throw new AppError(422, 'Ação inválida.');
@@ -152,6 +163,7 @@ export async function executarAcao(session, id, acao) {
   }
   if (visita.status !== regra.de) throw new AppError(409, MENSAGEM_STATUS[acao]);
 
+  // Ao autorizar, registra quem autorizou e como (app = morador; interfone = portaria).
   const extras =
     acao === 'AUTORIZAR'
       ? { autorizadoPorId: session.vinculoId, autorizacaoVia: morador ? 'APP' : 'INTERFONE' }

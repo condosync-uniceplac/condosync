@@ -6,6 +6,7 @@ CREATE TABLE tentativas_login (
   ip            varchar(64), -- texto livre: o header x-forwarded-for pode vir malformado
   criado_em     timestamptz NOT NULL DEFAULT now()
 );
+-- Busca rápida das falhas recentes de um identificador.
 CREATE INDEX ix_tentativas_login_identificador ON tentativas_login (identificador, criado_em);
 
 -- Versão 2: RG removido do cadastro (minimização de dados - LGPD).

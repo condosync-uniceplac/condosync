@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Cartão de sindicatura: admin designa ou retira o síndico; o síndico pode transferir a função.
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { Crown, Loader2, UserMinus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -12,10 +17,12 @@ import { lerResposta, enviarJson } from '@/lib/apiClient';
  * e o síndico atual pode transferir a função para o morador eleito.
  */
 export function SindicaturaCard() {
+  // Estado: síndico atual e candidatos, morador escolhido e envio.
   const [dados, setDados] = useState(null);
   const [escolhido, setEscolhido] = useState('');
   const [enviando, setEnviando] = useState(false);
 
+  // Busca o síndico atual e os candidatos.
   const carregar = useCallback(async () => {
     try {
       setDados(await lerResposta(await fetch('/api/admin/sindicatura', { cache: 'no-store' })));
@@ -32,6 +39,7 @@ export function SindicaturaCard() {
   const ehAdmin = dados.perfil === 'ADMIN';
   const candidato = dados.candidatos.find((c) => String(c.vinculoId) === escolhido);
 
+  // Designa/transfere a função; quem transferiu perde o perfil e entra de novo.
   const confirmar = async () => {
     if (!candidato) {
       toast.error('Escolha o morador que vai assumir como síndico.');
@@ -60,6 +68,7 @@ export function SindicaturaCard() {
     }
   };
 
+  // Admin retira a função do síndico atual.
   const retirarFuncao = async () => {
     if (
       !window.confirm(
@@ -83,6 +92,7 @@ export function SindicaturaCard() {
     }
   };
 
+  // Desenho da tela (JSX).
   return (
     <section className="mb-5 rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center gap-2">

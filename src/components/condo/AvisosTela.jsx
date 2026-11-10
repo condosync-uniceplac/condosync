@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Tela do Mural de Avisos: filtro por categoria, leitura, anexos e, para o síndico,
+ * publicar/editar/remover.
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { CheckCircle2, Download, FileText, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -21,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAvisos } from '@/lib/useAvisos';
 import { cn } from '@/lib/utils';
 
+// Formulário vazio e funções de formatação (data/hora, tamanho e tipo do arquivo).
 const vazio = { titulo: '', corpo: '', categoriaId: '', prioridade: 'NORMAL' };
 const dataHora = (iso) =>
   new Date(iso).toLocaleString('pt-BR', {
@@ -37,6 +44,7 @@ const TIPO = { 'application/pdf': 'PDF', 'image/png': 'PNG', 'image/jpeg': 'JPG'
 
 /** RN.20 (versão 2): só o síndico publica; categoria e urgência separadas; leitura e anexos. */
 export default function Avisos() {
+  // Categoria escolhida no filtro; os dados vêm do hook useAvisos.
   const [filtro, setFiltro] = useState(null);
   const {
     podePublicar,
@@ -49,12 +57,14 @@ export default function Avisos() {
     remover,
     confirmarLeitura,
   } = useAvisos(filtro);
+  // Estado do formulário de publicação/edição.
   const [editando, setEditando] = useState(null); // null fechado; {} novo; aviso = edição
   const [form, setForm] = useState(vazio);
   const [arquivo, setArquivo] = useState(null);
   const [removerAnexo, setRemoverAnexo] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  // Abre o formulário: vazio para novo aviso ou preenchido para editar.
   const abrir = (a) => {
     setEditando(a ?? {});
     setArquivo(null);
@@ -71,6 +81,7 @@ export default function Avisos() {
     );
   };
 
+  // Monta o formulário com o arquivo e envia (publicar ou editar).
   const salvar = async () => {
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
@@ -93,6 +104,7 @@ export default function Avisos() {
     }
   };
 
+  // Remove o aviso depois de confirmar.
   const excluir = async (a) => {
     if (!window.confirm(`Remover o aviso "${a.titulo}"? Ele some do mural para todos.`)) return;
     try {
@@ -103,6 +115,7 @@ export default function Avisos() {
     }
   };
 
+  // Confirma a leitura do aviso.
   const ler = async (a) => {
     try {
       await confirmarLeitura(a.id);
@@ -112,8 +125,10 @@ export default function Avisos() {
     }
   };
 
+  // Atualiza um campo do formulário.
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
+  // Desenho da tela (JSX).
   return (
     <AppLayout
       titulo="Mural de Avisos"

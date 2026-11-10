@@ -7,9 +7,11 @@
 -- - No máximo um síndico ativo por condomínio.
 -- =============================================================
 ALTER TABLE vinculos_condominio
+  -- Colunas novas do vínculo (explicadas no cabeçalho acima).
   ADD COLUMN sessao_versao integer NOT NULL DEFAULT 0,
   ADD COLUMN encerrado_em  timestamptz;
 
+-- Índice único parcial: só pode existir um vínculo SINDICO ativo por condomínio.
 CREATE UNIQUE INDEX ux_um_sindico_ativo
   ON vinculos_condominio (condominio_id)
   WHERE perfil = 'SINDICO' AND ativo;

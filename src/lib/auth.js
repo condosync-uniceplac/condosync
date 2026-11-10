@@ -1,3 +1,7 @@
+/**
+ * Criação e conferência do token de sessão (JWT) guardado no cookie do navegador.
+ */
+
 /*
  * Sessão via JWT (jose) em cookie httpOnly.
  * Este módulo é usado também pelo middleware.js (Edge Runtime), por isso não
@@ -5,9 +9,11 @@
  */
 import { SignJWT, jwtVerify } from 'jose';
 
+// Nome do cookie e duração da sessão (depois disso a pessoa precisa entrar de novo).
 export const SESSION_COOKIE = 'condosync_session';
 export const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 horas
 
+// Chave secreta usada para assinar o token; vem da variável de ambiente JWT_SECRET.
 function secretKey() {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 32) {
@@ -37,6 +43,8 @@ export async function verifySession(token) {
   }
 }
 
+// Opções do cookie: httpOnly (o JavaScript da página não lê), secure em produção (só HTTPS)
+// e sameSite=lax (não é enviado em requisições vindas de outros sites).
 export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {
   return {
     httpOnly: true,

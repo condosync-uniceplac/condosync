@@ -1,3 +1,8 @@
+/**
+ * Máscaras de exibição: CPF, telefone, documento de visitante (LGPD) e placa de veículo.
+ */
+
+// Deixa só os dígitos do valor, limitado a `max` caracteres.
 const digitos = (v, max) =>
   String(v ?? '')
     .replace(/\D/g, '')

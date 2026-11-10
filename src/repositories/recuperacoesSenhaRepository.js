@@ -1,5 +1,12 @@
+/**
+ * Consultas SQL dos pedidos de recuperação de senha (tabela recuperacoes_senha).
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
 
 /** Guarda apenas o hash do token; o token em si só existe no link enviado ao usuário. */
@@ -29,6 +36,7 @@ export async function findValido(tokenHash, db = pool) {
   return rows[0] ?? null;
 }
 
+// Marca o link como usado: não serve mais para trocar a senha.
 export async function marcarUsado(id, db = pool) {
   await db.query('UPDATE recuperacoes_senha SET usado_em = now() WHERE id = $1', [id]);
 }

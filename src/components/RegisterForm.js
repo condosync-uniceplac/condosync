@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Formulário de cadastro de morador: dados pessoais, unidade, senha e aceite dos termos.
+ * O cadastro fica pendente até o síndico aprovar.
+ */
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import PasswordChecklist from './PasswordChecklist';
@@ -8,8 +13,10 @@ import { formatCpf, formatTelefone } from '@/lib/masks';
 
 // O cadastro público é só para moradores: o síndico é designado pela administração
 // e as contas da portaria são criadas pelo síndico.
+// O cadastro público é sempre de morador (RN.06).
 const perfil = 'MORADOR';
 
+// Campo do formulário com rótulo, dica e mensagem de erro.
 function Field({ id, label, error, hint, children }) {
   return (
     <div className={styles.field}>
@@ -29,6 +36,7 @@ function Field({ id, label, error, hint, children }) {
 }
 
 export default function RegisterForm() {
+  // Estado da tela: listas, campo escolhido, erros por campo, sucesso e valores com máscara.
   const [condominios, setCondominios] = useState([]);
   const [unidades, setUnidades] = useState([]);
   const [condominioId, setCondominioId] = useState('');
@@ -42,6 +50,7 @@ export default function RegisterForm() {
   const [confirmacao, setConfirmacao] = useState('');
   const senhasDiferentes = confirmacao.length > 0 && confirmacao !== senha;
 
+  // Carrega os condomínios ao abrir.
   useEffect(() => {
     fetch('/api/condominios')
       .then((r) => r.json())
@@ -54,6 +63,7 @@ export default function RegisterForm() {
       .catch(() => setErro('Não foi possível carregar os condomínios.'));
   }, []);
 
+  // Quando o condomínio muda, carrega as unidades dele.
   useEffect(() => {
     if (!condominioId) return;
     fetch(`/api/condominios/${condominioId}/unidades`)
@@ -62,6 +72,7 @@ export default function RegisterForm() {
       .catch(() => setUnidades([]));
   }, [condominioId]);
 
+  // Envia o cadastro; erros por campo aparecem ao lado de cada campo.
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');
@@ -105,6 +116,7 @@ export default function RegisterForm() {
     }
   }
 
+  // Depois de cadastrar, mostra o aviso de que falta a aprovação do síndico.
   if (sucesso) {
     return (
       <div className={styles.form}>
@@ -118,6 +130,7 @@ export default function RegisterForm() {
     );
   }
 
+  // Desenho da tela (JSX).
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
       {erro && (

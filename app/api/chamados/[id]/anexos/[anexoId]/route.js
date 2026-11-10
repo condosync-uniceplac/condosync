@@ -1,13 +1,21 @@
+/**
+ * Rota da API: /api/chamados/:id/anexos/:anexoId
+ * No Next.js, cada função exportada (GET, POST, PUT, PATCH, DELETE) atende um método HTTP.
+ * Fluxo: confere a sessão -> valida os dados -> chama o service -> responde em JSON.
+ */
+
 import { z } from 'zod';
 import { handleError, parseWith } from '@/lib/http';
 import { requireSession } from '@/lib/session';
 import { baixarAnexo } from '@/services/chamadosService';
 
+// O :id da URL precisa ser um número inteiro positivo.
 const idSchema = z.coerce.number().int().positive();
 
 // GET /api/chamados/:id/anexos/:anexoId — foto do chamado (morador só baixa a dos próprios)
 export async function GET(_request, { params }) {
   try {
+    // Exige login válido (e o perfil, quando indicado); senão responde 401/403.
     const session = await requireSession();
     const p = await params;
     const anexo = await baixarAnexo(
@@ -16,6 +24,8 @@ export async function GET(_request, { params }) {
       parseWith(idSchema, p.anexoId),
     );
     const nome = encodeURIComponent(anexo.nome_arquivo);
+    // Devolve os bytes do arquivo como download, com o tipo e o nome corretos
+    // e sem cache (o arquivo é privado).
     return new Response(anexo.conteudo, {
       headers: {
         'Content-Type': anexo.mime_type,
@@ -26,6 +36,7 @@ export async function GET(_request, { params }) {
       },
     });
   } catch (err) {
+    // Qualquer erro vira uma resposta JSON padronizada (ver handleError em src/lib/http.js).
     return handleError(err, 'chamados/[id]/anexos');
   }
 }

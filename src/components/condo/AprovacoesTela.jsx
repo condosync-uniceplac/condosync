@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Tela de Administração (síndico/admin), com as abas Cadastros pendentes, Moradores,
+ * Portaria e Espaços, e o cartão de sindicatura.
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { Check, UserCheck, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -15,6 +21,7 @@ import { lerResposta } from '@/lib/apiClient';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
+// Nome do perfil exibido em cada cadastro.
 const PERFIL_LABEL = { MORADOR: 'Morador', PORTARIA: 'Portaria', SINDICO: 'Síndico' };
 
 function formatarData(iso) {
@@ -23,12 +30,14 @@ function formatarData(iso) {
 
 /** RF.03 (versão 2): o síndico aprova ou recusa os cadastros pendentes. */
 export default function AprovacoesTela() {
+  // Estado da tela: cadastros pendentes, erro, item em processamento e unidade corrigida por cadastro.
   const [cadastros, setCadastros] = useState(null);
   const [erro, setErro] = useState('');
   const [processando, setProcessando] = useState(null);
   const [unidades, setUnidades] = useState([]);
   const [unidadeEscolhida, setUnidadeEscolhida] = useState({});
 
+  // Carrega as unidades (para o síndico corrigir a unidade antes de aprovar).
   useEffect(() => {
     fetch('/api/admin/moradores', { cache: 'no-store' })
       .then(lerResposta)
@@ -36,6 +45,7 @@ export default function AprovacoesTela() {
       .catch(() => setUnidades([]));
   }, []);
 
+  // Busca os cadastros pendentes.
   const carregar = useCallback(async () => {
     setErro('');
     try {
@@ -53,6 +63,7 @@ export default function AprovacoesTela() {
     carregar();
   }, [carregar]);
 
+  // Aprova ou recusa um cadastro (com a unidade corrigida, se escolhida).
   async function decidir(cadastro, acao) {
     if (acao === 'recusar' && !window.confirm(`Recusar o cadastro de ${cadastro.nome}?`)) return;
     setProcessando(cadastro.id);
@@ -78,6 +89,7 @@ export default function AprovacoesTela() {
     }
   }
 
+  // Desenho da tela (JSX).
   return (
     <AppLayout
       titulo="Administração"

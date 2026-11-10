@@ -5,6 +5,7 @@
  */
 export const TAMANHO_MAX_ANEXO = 2 * 1024 * 1024;
 
+// "Assinatura" de cada tipo de arquivo: os primeiros bytes que todo arquivo daquele tipo tem.
 const ASSINATURAS = [
   { mime: 'application/pdf', ext: ['pdf'], bytes: [0x25, 0x50, 0x44, 0x46] }, // %PDF
   { mime: 'image/png', ext: ['png'], bytes: [0x89, 0x50, 0x4e, 0x47] },

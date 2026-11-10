@@ -1,5 +1,12 @@
+/**
+ * Consultas SQL dos vínculos usuário-condomínio (perfil, unidade, ativo, sessão).
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
 
 /**
@@ -19,6 +26,7 @@ export async function listAtivosByUsuario(usuarioId, db = pool) {
   return rows;
 }
 
+// Cria o vínculo (no cadastro público ele nasce inativo, aguardando aprovação).
 export async function create({ usuarioId, condominioId, perfil, unidadeId, ativo }, db = pool) {
   const { rows } = await db.query(
     `INSERT INTO vinculos_condominio (usuario_id, condominio_id, perfil, unidade_id, ativo)
@@ -56,6 +64,7 @@ export async function findPendente(id, condominioId, db = pool) {
   return rows[0] ?? null;
 }
 
+// Aprova o cadastro: o vínculo passa a ativo.
 export async function ativar(id, db = pool) {
   await db.query('UPDATE vinculos_condominio SET ativo = true WHERE id = $1', [id]);
 }
@@ -65,6 +74,7 @@ export async function remover(id, db = pool) {
   await db.query('DELETE FROM vinculos_condominio WHERE id = $1', [id]);
 }
 
+// O usuário já tem um cadastro aguardando aprovação?
 export async function existePendente(usuarioId, db = pool) {
   const { rows } = await db.query(
     'SELECT 1 FROM vinculos_condominio WHERE usuario_id = $1 AND NOT ativo AND encerrado_em IS NULL LIMIT 1',
@@ -115,6 +125,7 @@ export async function listMoradoresAtivos(condominioId, db = pool) {
   return rows;
 }
 
+// Morador ativo do condomínio pelo id do vínculo (para designar síndico).
 export async function findMoradorAtivo(vinculoId, condominioId, db = pool) {
   const { rows } = await db.query(
     `SELECT v.id, v.usuario_id, u.nome_completo
@@ -188,6 +199,7 @@ export async function encerrar(id, db = pool) {
   );
 }
 
+// Contas da portaria do condomínio (ativas e desativadas).
 export async function listPortaria(condominioId, db = pool) {
   const { rows } = await db.query(
     `SELECT v.id, v.criado_em, u.nome_completo, u.email, u.telefone

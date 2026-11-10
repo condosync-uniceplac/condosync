@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Tela da Portaria: registrar visitante não previsto, buscar visitas e registrar entrada/saída
+ * ou a confirmação por interfone (RN.14).
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { Check, LogIn, LogOut, PhoneCall, Search, UserPlus, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -19,8 +25,10 @@ import {
 } from '@/components/ui/table';
 import { useVisitas } from '@/lib/useVisitas';
 
+// Formulário vazio do visitante não previsto.
 const vazio = { nome: '', tipoDocumento: 'CPF', documento: '', unidadeId: '', placa: '' };
 
+// Mensagem de sucesso de cada ação.
 const SUCESSO = {
   AUTORIZAR: (v) => `Confirmação por interfone registrada para ${v.nome}`,
   RECUSAR: (v) => `Visita de ${v.nome} recusada`,
@@ -29,11 +37,13 @@ const SUCESSO = {
 };
 
 export default function Portaria() {
+  // Visitas e unidades vêm do hook useVisitas (atualiza a cada 15 s).
   const { visitas, unidades, carregando, erro, criar, acao } = useVisitas();
   const [form, setForm] = useState(vazio);
   const [busca, setBusca] = useState('');
   const [enviando, setEnviando] = useState(false);
 
+  // Registra o visitante não previsto (fica aguardando o morador).
   const registrar = async () => {
     setEnviando(true);
     try {
@@ -47,6 +57,7 @@ export default function Portaria() {
     }
   };
 
+  // Executa uma ação na visita (interfone, entrada, saída...).
   const executar = async (v, nome) => {
     try {
       await acao(v.id, nome);
@@ -66,6 +77,7 @@ export default function Portaria() {
       )
     : visitas;
 
+  // Desenho da tela (JSX).
   return (
     <AppLayout
       titulo="Portaria & Controle de Acesso"

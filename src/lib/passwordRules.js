@@ -1,3 +1,7 @@
+/**
+ * Regras de senha forte mostradas na tela, item por item, enquanto a pessoa digita.
+ */
+
 /** Critérios da senha forte (RN.03) — os mesmos do senhaForteSchema, para a tela orientar antes do envio. */
 export const CRITERIOS_SENHA = [
   { id: 'tamanho', texto: 'Pelo menos 8 caracteres', ok: (s) => s.length >= 8 },
@@ -11,6 +15,7 @@ export const CRITERIOS_SENHA = [
   },
 ];
 
+// Para cada critério, diz se a senha digitada atende (usado no checklist do formulário).
 export function avaliarSenha(senha = '') {
   return CRITERIOS_SENHA.map((c) => ({ id: c.id, texto: c.texto, ok: c.ok(senha) }));
 }

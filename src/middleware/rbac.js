@@ -4,6 +4,7 @@
  * Mantenha este arquivo sem dependências de Node (roda no Edge Runtime).
  */
 
+// Perfis de acesso do sistema.
 export const PERFIS = Object.freeze({
   MORADOR: 'MORADOR',
   PORTARIA: 'PORTARIA',
@@ -37,6 +38,7 @@ const RULES = [
   { prefix: '/visitantes', perfis: [PERFIS.MORADOR] },
 ];
 
+// O caminho é o próprio prefixo ou fica "dentro" dele (ex.: /admin/espacos dentro de /admin).
 const matches = (pathname, prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 export const isPublic = (pathname) => PUBLIC_PREFIXES.some((p) => matches(pathname, p));

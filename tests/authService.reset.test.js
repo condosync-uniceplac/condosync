@@ -1,5 +1,13 @@
+/**
+ * Testes automatizados (Vitest) de recuperação de senha (authService.resetPassword e isResetTokenValid).
+ * Rodam com `npm test` e em todo Pull Request (GitHub Actions).
+ * describe agrupa os casos; cada it(...) é um caso de teste; expect(...) confere o resultado.
+ */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// vi.mock troca o banco/repositórios por funções falsas: o teste confere só a regra de negócio,
+// sem precisar de um banco de verdade.
 vi.mock('@/lib/db', () => ({ withTransaction: vi.fn((fn) => fn({})), query: vi.fn() }));
 vi.mock('@/lib/password', () => ({
   hashPassword: vi.fn(async () => 'novo-hash'),
@@ -23,6 +31,7 @@ const { resetPassword } = await import('@/services/authService');
 const token = 'x'.repeat(43);
 
 describe('resetPassword (RF.07)', () => {
+  // Antes de cada teste: zera as funções falsas e define as respostas padrão.
   beforeEach(() => {
     vi.clearAllMocks();
     recuperacoesRepo.findValido.mockResolvedValue({ id: 1, usuario_id: 5 });

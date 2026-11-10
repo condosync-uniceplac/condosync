@@ -1,5 +1,13 @@
+/**
+ * Testes automatizados (Vitest) de designação, transferência e retirada do síndico (sindicaturaService).
+ * Rodam com `npm test` e em todo Pull Request (GitHub Actions).
+ * describe agrupa os casos; cada it(...) é um caso de teste; expect(...) confere o resultado.
+ */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// vi.mock troca o banco/repositórios por funções falsas: o teste confere só a regra de negócio,
+// sem precisar de um banco de verdade.
 vi.mock('@/lib/db', () => ({ withTransaction: (fn) => fn('tx'), query: vi.fn() }));
 vi.mock('@/repositories/vinculosRepository', () => ({
   findSindicoAtivo: vi.fn(),
@@ -16,6 +24,7 @@ const sindico = { perfil: 'SINDICO', condominioId: '1', vinculoId: '30' };
 const morador = { perfil: 'MORADOR', condominioId: '1', vinculoId: '10' };
 
 describe('sindicaturaService — designação do síndico', () => {
+  // Antes de cada teste: zera as funções falsas e define as respostas padrão.
   beforeEach(() => {
     vi.clearAllMocks();
     repo.findMoradorAtivo.mockResolvedValue({ id: 10, usuario_id: 1, nome_completo: 'Maria' });

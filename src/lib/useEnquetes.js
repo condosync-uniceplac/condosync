@@ -1,8 +1,13 @@
 'use client';
 
+/**
+ * Hooks das enquetes: lista, cria, vota e encerra; e o contador de votações abertas.
+ */
+
 import { useCallback, useEffect, useState } from 'react';
 import { enviarJson, lerResposta } from '@/lib/apiClient';
 
+// Evento disparado quando uma enquete muda.
 export const EVENTO_ENQUETES = 'condosync:enquetes-atualizadas';
 
 /** Enquetes vindas da API (RN.24: um voto por unidade). */
@@ -11,6 +16,7 @@ export function useEnquetes() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
 
+  // Busca as enquetes na API.
   const recarregar = useCallback(async () => {
     try {
       setDados(await lerResposta(await fetch('/api/enquetes', { cache: 'no-store' })));
@@ -26,6 +32,7 @@ export function useEnquetes() {
     recarregar();
   }, [recarregar]);
 
+  // Depois de qualquer ação (mesmo com erro): recarrega a lista e avisa o contador.
   const depois = useCallback(
     async (promessa) => {
       try {
