@@ -1,3 +1,9 @@
+/**
+ * Aprovação e recusa de cadastros pendentes (RF.03 / RN.04).
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { AppError } from '@/lib/errors';
 import { withTransaction } from '@/lib/db';
 import * as condominiosRepo from '@/repositories/condominiosRepository';
@@ -18,6 +24,7 @@ export async function listarPendentes(session) {
   }));
 }
 
+// Cadastro pendente do mesmo condomínio da sessão, ou 404.
 async function pendenteDoCondominio(session, id) {
   const vinculo = await vinculosRepo.findPendente(id, session.condominioId);
   if (!vinculo) throw new AppError(404, 'Cadastro pendente não encontrado.');
@@ -49,6 +56,7 @@ export async function aprovar(session, id, { unidadeId } = {}) {
   });
 }
 
+// Recusa: remove o vínculo pendente (a pessoa não ganha acesso).
 export async function recusar(session, id) {
   const vinculo = await pendenteDoCondominio(session, id);
   await vinculosRepo.remover(vinculo.id);

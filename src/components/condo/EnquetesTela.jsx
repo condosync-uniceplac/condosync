@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Tela de Enquetes: votações abertas e encerradas, voto por unidade e, para o síndico,
+ * criar e encerrar (RN.24).
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import {
   BarChart3,
   CalendarClock,
@@ -41,8 +47,10 @@ const dataHora = (iso) =>
     minute: '2-digit',
   });
 
+// Formulário vazio de nova enquete (começa com 2 opções).
 const novoForm = () => ({ pergunta: '', descricao: '', encerraEm: '', opcoes: ['', ''] });
 
+// Cartão de uma enquete: opções com a porcentagem, o voto da unidade e a vencedora (se encerrada).
 function CartaoEnquete({ enquete, podeVotar, podeCriar, onVotar, onEncerrar, ocupado }) {
   const { total, encerrada } = enquete;
   const maior = Math.max(0, ...enquete.opcoes.map((o) => o.votos));
@@ -156,6 +164,7 @@ function CartaoEnquete({ enquete, podeVotar, podeCriar, onVotar, onEncerrar, ocu
 
 /** RN.24 (versão 2): síndico cria e encerra; um voto por unidade, alterável até o fim. */
 export default function Enquetes() {
+  // Dados e ações vêm do hook useEnquetes.
   const { podeCriar, podeVotar, enquetes, carregando, erro, criar, votar, encerrar } =
     useEnquetes();
   const [ocupado, setOcupado] = useState(false);
@@ -166,6 +175,7 @@ export default function Enquetes() {
   const abertas = enquetes.filter((e) => !e.encerrada);
   const encerradas = enquetes.filter((e) => e.encerrada);
 
+  // Executa uma ação (votar/encerrar) mostrando o aviso de sucesso ou erro.
   const executar = async (acao, sucesso) => {
     setOcupado(true);
     try {
@@ -178,12 +188,14 @@ export default function Enquetes() {
     }
   };
 
+  // Vota ou troca o voto da unidade.
   const onVotar = (enquete, opcao) =>
     executar(
       () => votar(enquete.id, opcao.id),
       enquete.meuVoto ? `Voto alterado: ${opcao.texto}` : `Voto registrado: ${opcao.texto}`,
     );
 
+  // Encerra a votação depois de confirmar.
   const onEncerrar = (enquete) => {
     if (
       !window.confirm(
@@ -194,9 +206,11 @@ export default function Enquetes() {
     executar(() => encerrar(enquete.id), 'Votação encerrada.');
   };
 
+  // Atualiza o texto de uma opção no formulário.
   const setOpcao = (i, v) =>
     setForm((f) => ({ ...f, opcoes: f.opcoes.map((o, j) => (j === i ? v : o)) }));
 
+  // Publica a nova enquete.
   const salvar = async () => {
     setSalvando(true);
     try {
@@ -212,6 +226,7 @@ export default function Enquetes() {
 
   const hoje = dataLocal(new Date());
 
+  // Grade de cartões (usada para abertas e encerradas).
   const grade = (lista) => (
     <div className="grid gap-5 lg:grid-cols-2">
       {lista.map((e) => (

@@ -1,7 +1,16 @@
+/**
+ * Consultas SQL de chamados (chamados, anexos_chamado e chamado_acompanhamentos).
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
 
+// Colunas devolvidas para a tela: dados do chamado, categoria, solicitante, unidade,
+// lista de anexos (sem o conteúdo) e quantidade de comentários.
 const CAMPOS = `
   c.id, c.titulo, c.descricao, c.urgencia, c.status, c.criado_em, c.atualizado_em,
   c.resolvido_em, c.solicitante_id, c.categoria_id, cat.nome AS categoria,
@@ -14,6 +23,7 @@ const CAMPOS = `
   (SELECT count(*)::int FROM chamado_acompanhamentos h
     WHERE h.chamado_id = c.id AND h.comentario IS NOT NULL) AS comentarios`;
 
+// Tabelas ligadas para montar esses campos.
 const FROM = `
   FROM chamados c
   JOIN categorias_chamado cat ON cat.id = c.categoria_id
@@ -40,6 +50,7 @@ export async function listByCondominio(condominioId, { solicitanteId } = {}, db 
   return rows;
 }
 
+// Chamado pelo id, só se for do condomínio informado.
 export async function findById(id, condominioId, db = pool) {
   const { rows } = await db.query(
     `SELECT ${CAMPOS} ${FROM} WHERE c.id = $1 AND c.condominio_id = $2`,
@@ -57,16 +68,19 @@ export async function lockStatus(id, condominioId, db = pool) {
   return rows[0] ?? null;
 }
 
+// Categorias de chamado, em ordem alfabética.
 export async function listCategorias(db = pool) {
   const { rows } = await db.query('SELECT id, nome FROM categorias_chamado ORDER BY nome');
   return rows;
 }
 
+// Confere se a categoria informada existe.
 export async function categoriaExiste(id, db = pool) {
   const { rowCount } = await db.query('SELECT 1 FROM categorias_chamado WHERE id = $1', [id]);
   return rowCount > 0;
 }
 
+// Insere o chamado (status inicial ABERTO) e devolve o id.
 export async function create(c, db = pool) {
   const { rows } = await db.query(
     `INSERT INTO chamados (condominio_id, solicitante_id, unidade_id, categoria_id, urgencia, titulo, descricao)
@@ -84,6 +98,7 @@ export async function create(c, db = pool) {
   return rows[0];
 }
 
+// Muda o status; resolvido_em é preenchido só quando o status é RESOLVIDO.
 export async function updateStatus(id, status, db = pool) {
   await db.query(
     `UPDATE chamados
@@ -94,10 +109,12 @@ export async function updateStatus(id, status, db = pool) {
   );
 }
 
+// Atualiza a data da última alteração (usado quando só há comentário).
 export async function tocar(id, db = pool) {
   await db.query('UPDATE chamados SET atualizado_em = now() WHERE id = $1', [id]);
 }
 
+// Registra uma linha no histórico: novo status e/ou comentário, com o autor.
 export async function addAcompanhamento(chamadoId, { autorId, novoStatus, comentario }, db = pool) {
   await db.query(
     `INSERT INTO chamado_acompanhamentos (chamado_id, autor_id, novo_status, comentario)
@@ -106,6 +123,7 @@ export async function addAcompanhamento(chamadoId, { autorId, novoStatus, coment
   );
 }
 
+// Histórico do chamado em ordem cronológica, com nome e perfil de quem fez.
 export async function listAcompanhamentos(chamadoId, db = pool) {
   const { rows } = await db.query(
     `SELECT h.id, h.novo_status, h.comentario, h.criado_em,
@@ -120,6 +138,7 @@ export async function listAcompanhamentos(chamadoId, db = pool) {
   return rows;
 }
 
+// Guarda a foto do chamado no banco.
 export async function addAnexo(chamadoId, f, db = pool) {
   await db.query(
     `INSERT INTO anexos_chamado (chamado_id, nome_arquivo, storage_path, mime_type, tamanho_bytes, conteudo)

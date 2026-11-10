@@ -1,8 +1,13 @@
+/**
+ * Leitura da sessão no servidor e exigência de login/perfil nas rotas da API.
+ */
+
 import { cookies } from 'next/headers';
 import { AppError } from './errors';
 import { SESSION_COOKIE, verifySession } from './auth';
 import * as vinculosRepo from '@/repositories/vinculosRepository';
 
+// Mensagem mostrada quando a sessão deixou de valer (ex.: perfil alterado).
 export const SESSAO_EXPIRADA = 'Sua sessão expirou. Entre novamente.';
 
 /** Payload do JWT, sem consultar o banco (use só para exibição). */

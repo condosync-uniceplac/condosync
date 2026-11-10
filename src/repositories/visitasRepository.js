@@ -1,5 +1,12 @@
+/**
+ * Consultas SQL de visitantes e visitas (portaria).
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
 
 /** Cria o visitante ou atualiza o nome se o documento já estiver cadastrado no condomínio. */
@@ -14,6 +21,7 @@ export async function upsertVisitante({ condominioId, nome, tipoDocumento, docum
   return rows[0].id;
 }
 
+// Registra a visita com o status inicial e, se já vier autorizada, quem e como autorizou.
 export async function create(v, db = pool) {
   const { rows } = await db.query(
     `INSERT INTO visitas (visitante_id, unidade_id, autorizado_por_id, registrada_por_id,
@@ -35,6 +43,7 @@ export async function create(v, db = pool) {
   return rows[0];
 }
 
+// Colunas devolvidas para a tela: visita, visitante, unidade e quem autorizou.
 const SELECT = `
   SELECT vi.id, vi.unidade_id, vi.status, vi.placa_veiculo, vi.previsao_entrada, vi.entrada_em,
          vi.saida_em, vi.autorizacao_via, vi.autorizado_em, vi.codigo_convite, vi.criado_em,
@@ -75,6 +84,7 @@ export async function listDoCondominio(condominioId, db = pool) {
   return rows;
 }
 
+// Visita pelo id, só se for do condomínio informado.
 export async function findById(id, condominioId, db = pool) {
   const { rows } = await db.query(
     `SELECT vi.id, vi.unidade_id, vi.status

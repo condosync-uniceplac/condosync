@@ -1,8 +1,14 @@
 'use client';
 
+/**
+ * Hooks dos chamados: lista, abre, muda status, comenta e detalha;
+ * e o contador de chamados abertos usado na Visão Geral.
+ */
+
 import { useCallback, useEffect, useState } from 'react';
 import { enviarJson, lerResposta } from '@/lib/apiClient';
 
+// Evento disparado quando um chamado muda, para a Visão Geral atualizar o contador.
 export const EVENTO_CHAMADOS = 'condosync:chamados-atualizados';
 const avisar = () => window.dispatchEvent(new Event(EVENTO_CHAMADOS));
 
@@ -19,6 +25,7 @@ export function useChamados() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
 
+  // Busca a lista de chamados na API.
   const recarregar = useCallback(async () => {
     try {
       setDados(await lerResposta(await fetch('/api/chamados', { cache: 'no-store' })));
@@ -34,6 +41,7 @@ export function useChamados() {
     recarregar();
   }, [recarregar]);
 
+  // Depois de qualquer alteração: recarrega a lista e avisa o contador.
   const depois = useCallback(
     async (promessa) => {
       const r = await promessa;

@@ -1,10 +1,16 @@
+/**
+ * Leitura e validação das variáveis de ambiente (endereço do banco, segredo do JWT etc.).
+ */
+
 import { z } from 'zod';
 
+// Converte textos como 'true'/'1' em verdadeiro e o resto em falso.
 const booleanString = z
   .enum(['true', 'false', '1', '0', ''])
   .optional()
   .transform((v) => v === 'true' || v === '1');
 
+// Variáveis esperadas e as regras de cada uma (zod).
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   APP_URL: z.string().url().default('http://localhost:3000'),
@@ -16,6 +22,7 @@ const schema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 });
 
+// Guarda o resultado para não validar de novo a cada chamada.
 let cached;
 
 /**
@@ -34,4 +41,5 @@ export function getEnv() {
   return cached;
 }
 
+// Indica se o sistema está rodando em produção.
 export const isProduction = () => process.env.NODE_ENV === 'production';

@@ -1,3 +1,9 @@
+/**
+ * Rota da API: /api/visitas
+ * No Next.js, cada função exportada (GET, POST, PUT, PATCH, DELETE) atende um método HTTP.
+ * Fluxo: confere a sessão -> valida os dados -> chama o service -> responde em JSON.
+ */
+
 import { NextResponse } from 'next/server';
 import { handleError, parseWith, readJson } from '@/lib/http';
 import { requireSession } from '@/lib/session';
@@ -7,9 +13,11 @@ import { listar, preAutorizar, registrarNaoPrevisto } from '@/services/visitasSe
 // GET /api/visitas — morador: visitas da sua unidade; portaria/síndico: movimento do condomínio
 export async function GET() {
   try {
+    // Exige login válido (e o perfil, quando indicado); senão responde 401/403.
     const session = await requireSession();
     return NextResponse.json(await listar(session));
   } catch (err) {
+    // Qualquer erro vira uma resposta JSON padronizada (ver handleError em src/lib/http.js).
     return handleError(err, 'visitas');
   }
 }

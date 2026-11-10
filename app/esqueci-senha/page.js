@@ -1,7 +1,12 @@
+/**
+ * Página pública /esqueci-senha (pedido do link de recuperação).
+ */
+
 import Link from 'next/link';
 import EsqueciSenhaForm from '@/components/EsqueciSenhaForm';
 import styles from '@/components/AuthCard.module.css';
 
+// Título (e descrição) da aba do navegador.
 export const metadata = { title: 'Esqueci a senha | CondoSync' };
 
 export default function EsqueciSenhaPage() {

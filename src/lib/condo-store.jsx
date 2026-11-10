@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Contexto React do painel: deixa o usuário logado e o condomínio disponíveis para todas as telas.
+ */
+
 import { createContext, useContext, useEffect, useMemo } from 'react';
 
 const CondoContext = createContext(null);
@@ -26,6 +30,7 @@ export function CondoProvider({ children, sessao, usuario, condominio }) {
   return <CondoContext.Provider value={valor}>{children}</CondoContext.Provider>;
 }
 
+// Atalho para as telas lerem o contexto (usuário, perfil e condomínio).
 export function useCondo() {
   const ctx = useContext(CondoContext);
   if (!ctx) throw new Error('useCondo precisa estar dentro de CondoProvider');

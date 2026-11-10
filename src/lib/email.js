@@ -1,3 +1,7 @@
+/**
+ * Envio de e-mails (recuperação de senha e convite da portaria) pelo serviço Resend.
+ */
+
 import { isProduction } from '@/lib/env';
 
 /**
@@ -19,6 +23,7 @@ export async function enviarEmail({ para, assunto, texto, html }) {
     return { enviado: false };
   }
 
+  // Chama a API da Resend com o remetente, o destinatário, o assunto e o texto.
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },

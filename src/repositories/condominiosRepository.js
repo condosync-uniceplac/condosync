@@ -1,12 +1,21 @@
+/**
+ * Consultas SQL de condomínios, blocos e unidades.
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
 
+// Lista de condomínios para o formulário de cadastro.
 export async function listResumo(db = pool) {
   const { rows } = await db.query('SELECT id, nome, cidade, uf FROM condominios ORDER BY nome');
   return rows;
 }
 
+// Condomínio pelo id (ou null).
 export async function findById(id, db = pool) {
   const { rows } = await db.query('SELECT id, nome FROM condominios WHERE id = $1', [id]);
   return rows[0] ?? null;

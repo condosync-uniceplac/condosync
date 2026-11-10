@@ -1,5 +1,12 @@
+/**
+ * Consultas SQL do mural de avisos (tabelas avisos, anexos_aviso e aviso_leituras).
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
 
 /**
@@ -28,16 +35,19 @@ export async function listByCondominio(condominioId, usuarioId, { categoriaId } 
   return rows;
 }
 
+// Categorias do mural, em ordem alfabética.
 export async function listCategorias(db = pool) {
   const { rows } = await db.query('SELECT id, nome FROM categorias_aviso ORDER BY nome');
   return rows;
 }
 
+// Confere se a categoria informada existe.
 export async function categoriaExiste(id, db = pool) {
   const { rows } = await db.query('SELECT 1 FROM categorias_aviso WHERE id = $1', [id]);
   return rows.length > 0;
 }
 
+// Quantos avisos do condomínio o usuário ainda não confirmou como lidos.
 export async function contarNaoLidos(condominioId, usuarioId, db = pool) {
   const { rows } = await db.query(
     `SELECT count(*)::int AS n FROM avisos a
@@ -48,6 +58,7 @@ export async function contarNaoLidos(condominioId, usuarioId, db = pool) {
   return rows[0].n;
 }
 
+// Aviso pelo id, só se for do condomínio informado.
 export async function findById(id, condominioId, db = pool) {
   const { rows } = await db.query(
     'SELECT id, titulo FROM avisos WHERE id = $1 AND condominio_id = $2',
@@ -56,6 +67,7 @@ export async function findById(id, condominioId, db = pool) {
   return rows[0] ?? null;
 }
 
+// Insere o aviso e devolve o id.
 export async function create(a, db = pool) {
   const { rows } = await db.query(
     `INSERT INTO avisos (condominio_id, categoria_id, autor_id, titulo, corpo, prioridade)
@@ -65,6 +77,7 @@ export async function create(a, db = pool) {
   return rows[0];
 }
 
+// Atualiza título, texto, categoria e prioridade.
 export async function update(id, a, db = pool) {
   await db.query(
     `UPDATE avisos SET categoria_id = $2, titulo = $3, corpo = $4, prioridade = $5,
@@ -74,10 +87,12 @@ export async function update(id, a, db = pool) {
   );
 }
 
+// Apaga o aviso (anexos e leituras saem junto, por ON DELETE CASCADE).
 export async function remove(id, db = pool) {
   await db.query('DELETE FROM avisos WHERE id = $1', [id]);
 }
 
+// Guarda o arquivo no banco (conteudo em bytea).
 export async function addAnexo(avisoId, f, db = pool) {
   await db.query(
     `INSERT INTO anexos_aviso (aviso_id, nome_arquivo, storage_path, mime_type, tamanho_bytes, conteudo)
@@ -86,6 +101,7 @@ export async function addAnexo(avisoId, f, db = pool) {
   );
 }
 
+// Apaga os anexos do aviso (usado ao trocar ou remover o anexo).
 export async function removeAnexos(avisoId, db = pool) {
   await db.query('DELETE FROM anexos_aviso WHERE aviso_id = $1', [avisoId]);
 }
@@ -102,6 +118,7 @@ export async function findAnexo(avisoId, anexoId, condominioId, db = pool) {
   return rows[0] ?? null;
 }
 
+// Registra a leitura; se já existia, não faz nada (ON CONFLICT DO NOTHING).
 export async function marcarLido(avisoId, usuarioId, db = pool) {
   await db.query(
     `INSERT INTO aviso_leituras (aviso_id, usuario_id) VALUES ($1, $2)

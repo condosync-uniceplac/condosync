@@ -1,3 +1,9 @@
+/**
+ * Chamados e ocorrências (RN.22).
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { withTransaction } from '@/lib/db';
 import { AppError } from '@/lib/errors';
 import { nomeSeguro, validarAnexo } from '@/lib/anexos';
@@ -28,15 +34,18 @@ export function transicoesPermitidas(perfil, atual) {
   return [];
 }
 
+// Portaria, síndico e administrador registram comentários.
 export const podeComentar = (perfil) => COMENTAM.includes(perfil);
 
 /** Morador só enxerga os chamados que ele mesmo abriu. */
 const veTodos = (s) => s.perfil !== 'MORADOR';
 const filtroDe = (s) => (veTodos(s) ? {} : { solicitanteId: s.vinculoId });
 
+// Texto da unidade do solicitante (portaria/admin não têm unidade).
 const unidade = (c) =>
   c.unidade_numero ? `Apto ${c.unidade_numero} - Bloco ${c.bloco_nome}` : null;
 
+// Converte a linha do banco no formato da tela, já com as mudanças de status permitidas a quem vê.
 const paraTela = (session) => (c) => ({
   id: Number(c.id),
   titulo: c.titulo,
@@ -62,6 +71,7 @@ const paraTela = (session) => (c) => ({
   })),
 });
 
+// Lista de chamados visíveis para o perfil, com as categorias.
 export async function listar(session) {
   const [chamados, categorias] = await Promise.all([
     chamadosRepo.listByCondominio(session.condominioId, filtroDe(session)),
@@ -75,6 +85,7 @@ export async function listar(session) {
   };
 }
 
+// Quantidade de chamados não resolvidos (Visão Geral).
 export async function resumo(session) {
   return { abertos: await chamadosRepo.contarAbertos(session.condominioId, filtroDe(session)) };
 }
@@ -88,6 +99,7 @@ async function buscarVisivel(session, id) {
   return c;
 }
 
+// Chamado com o histórico completo de acompanhamento.
 export async function detalhar(session, id) {
   const c = await buscarVisivel(session, id);
   const historico = await chamadosRepo.listAcompanhamentos(c.id);
@@ -105,6 +117,7 @@ export async function detalhar(session, id) {
   };
 }
 
+// Valida a foto (tipo pelo conteúdo e tamanho) e prepara para gravar.
 function prepararAnexo(arquivo) {
   if (!arquivo) return null;
   const { mime, erro } = validarAnexo(arquivo.nome, arquivo.conteudo);
@@ -117,6 +130,7 @@ function prepararAnexo(arquivo) {
   };
 }
 
+// Abre o chamado com a unidade de quem pediu e a foto opcional.
 export async function abrir(session, dados, arquivo) {
   if (!(await chamadosRepo.categoriaExiste(dados.categoriaId))) {
     throw new AppError(422, 'Dados inválidos.', { categoriaId: 'Categoria não encontrada.' });
@@ -159,6 +173,7 @@ export async function alterarStatus(session, id, { status, comentario }) {
   });
 }
 
+// Mensagem de erro específica para cada caso proibido.
 function mensagemSemPermissao(perfil, status) {
   if (perfil === 'MORADOR') return 'Somente a administração do condomínio altera o status.';
   if (status === 'RESOLVIDO') return 'Apenas o síndico pode marcar o chamado como resolvido.';
@@ -166,6 +181,7 @@ function mensagemSemPermissao(perfil, status) {
   return 'Você não pode alterar o status deste chamado.';
 }
 
+// Registra só um comentário (sem mudar o status).
 export async function comentar(session, id, { comentario }) {
   if (!podeComentar(session.perfil)) {
     throw new AppError(403, 'Apenas a portaria e o síndico registram acompanhamentos.');
@@ -177,6 +193,7 @@ export async function comentar(session, id, { comentario }) {
   });
 }
 
+// Devolve a foto só para quem pode ver o chamado.
 export async function baixarAnexo(session, chamadoId, anexoId) {
   const anexo = await chamadosRepo.findAnexo(chamadoId, anexoId, session.condominioId);
   if (

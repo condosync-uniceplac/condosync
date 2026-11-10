@@ -1,8 +1,17 @@
+/**
+ * Consultas SQL de reservas e da lista de espaços para reservar.
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
+// Condição SQL de reserva ativa (não cancelada nem concluída).
 const ATIVAS = `r.status IN ('PENDENTE', 'CONFIRMADA')`;
 
+// Espaços ativos do condomínio, para o morador escolher.
 export async function listEspacos(condominioId, db = pool) {
   const { rows } = await db.query(
     `SELECT id, nome, descricao, capacidade_pessoas, valor
@@ -33,6 +42,7 @@ export async function travarMorador(vinculoId, db = pool) {
   ]);
 }
 
+// Existe outra reserva ativa do mesmo espaço que se sobrepõe ao horário? (RN.12)
 export async function existeConflitoEspaco(espacoId, inicio, fim, db = pool) {
   const { rows } = await db.query(
     `SELECT 1 FROM reservas r
@@ -43,6 +53,7 @@ export async function existeConflitoEspaco(espacoId, inicio, fim, db = pool) {
   return rows.length > 0;
 }
 
+// O morador já tem outra reserva ativa nesse horário, em qualquer espaço? (RN.12)
 export async function existeConflitoMorador(vinculoId, inicio, fim, db = pool) {
   const { rows } = await db.query(
     `SELECT 1 FROM reservas r
@@ -53,6 +64,7 @@ export async function existeConflitoMorador(vinculoId, inicio, fim, db = pool) {
   return rows.length > 0;
 }
 
+// Grava a reserva como CONFIRMADA e devolve os dados principais.
 export async function create({ espacoId, vinculoId, inicio, fim, convidados, valor }, db = pool) {
   const { rows } = await db.query(
     `INSERT INTO reservas (espaco_id, vinculo_id, inicio, fim, status, valor_cobrado, convidados)
@@ -98,6 +110,7 @@ export async function listOcupacao(condominioId, db = pool) {
   return rows;
 }
 
+// Reserva pelo id, só se for do condomínio informado.
 export async function findById(id, condominioId, db = pool) {
   const { rows } = await db.query(
     `SELECT r.id, r.vinculo_id, r.inicio, r.status
@@ -109,6 +122,7 @@ export async function findById(id, condominioId, db = pool) {
   return rows[0] ?? null;
 }
 
+// Cancela (não apaga): status CANCELADA e data do cancelamento.
 export async function cancelar(id, db = pool) {
   await db.query(
     `UPDATE reservas SET status = 'CANCELADA', cancelada_em = now()

@@ -1,3 +1,8 @@
+/**
+ * Resposta provisória (501) usada nas primeiras sprints para rotas ainda não implementadas.
+ * Hoje nenhuma rota usa este arquivo; ficou como apoio para módulos futuros.
+ */
+
 import { NextResponse } from 'next/server';
 import { handleError } from './http';
 import { requireSession } from './session';

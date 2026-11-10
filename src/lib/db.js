@@ -1,3 +1,7 @@
+/**
+ * Acesso ao banco PostgreSQL: pool de conexões, consulta parametrizada e transação.
+ */
+
 import { Pool } from 'pg';
 import { getEnv } from './env';
 
@@ -22,6 +26,7 @@ function createPool() {
   return pool;
 }
 
+// Devolve o pool único, criando-o na primeira chamada.
 export function getPool() {
   if (!globalThis.__condosyncPool) {
     globalThis.__condosyncPool = createPool();

@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Aba Espaços da Administração: o síndico cadastra, edita e desativa espaços comuns.
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { CalendarDays, Loader2, Pencil, Plus, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -18,17 +23,20 @@ import { Label } from '@/components/ui/label';
 import { enviarJson, lerResposta } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 
+// Formulário vazio e formatação do valor em reais.
 const vazio = { nome: '', descricao: '', capacidade: '20', valor: '0', ativo: true };
 const taxa = (v) =>
   v > 0 ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Isento';
 
 /** RF.09 (Sprint 3): o síndico cadastra, edita e desativa os espaços de reserva. */
 export function EspacosAba() {
+  // Estado: lista de espaços e formulário aberto (novo ou edição).
   const [espacos, setEspacos] = useState(null);
   const [editando, setEditando] = useState(null); // null = fechado; {} = novo; espaço = edição
   const [form, setForm] = useState(vazio);
   const [salvando, setSalvando] = useState(false);
 
+  // Busca os espaços na API.
   const carregar = useCallback(async () => {
     try {
       const d = await lerResposta(await fetch('/api/admin/espacos', { cache: 'no-store' }));
@@ -43,6 +51,7 @@ export function EspacosAba() {
     carregar();
   }, [carregar]);
 
+  // Abre o formulário vazio (novo) ou com os dados do espaço (edição).
   const abrir = (e) => {
     setEditando(e ?? {});
     setForm(
@@ -58,6 +67,7 @@ export function EspacosAba() {
     );
   };
 
+  // Cria ou atualiza o espaço.
   const salvar = async () => {
     setSalvando(true);
     const corpo = {
@@ -86,6 +96,7 @@ export function EspacosAba() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
+  // Desenho da tela (JSX).
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-center justify-between gap-3">

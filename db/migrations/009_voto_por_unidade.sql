@@ -12,11 +12,13 @@ UPDATE votos_enquete ve
   FROM vinculos_condominio v
   JOIN enquetes e ON e.condominio_id = v.condominio_id
  WHERE v.usuario_id = ve.usuario_id AND e.id = ve.enquete_id AND v.ativo AND v.unidade_id IS NOT NULL;
+-- Remove votos sem unidade e, se a mesma unidade votou duas vezes, mantém só o mais recente.
 DELETE FROM votos_enquete WHERE unidade_id IS NULL;
 DELETE FROM votos_enquete a USING votos_enquete b
  WHERE a.enquete_id = b.enquete_id AND a.unidade_id = b.unidade_id AND a.atualizado_em < b.atualizado_em;
 
 ALTER TABLE votos_enquete
+  -- Troca a chave primária: de (enquete, usuário) para (enquete, unidade).
   ALTER COLUMN unidade_id SET NOT NULL,
   DROP CONSTRAINT votos_enquete_pkey,
   ADD PRIMARY KEY (enquete_id, unidade_id);

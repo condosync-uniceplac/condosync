@@ -12,12 +12,14 @@ const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const { createClient } = require('./_db');
 
+// Lê o valor de um parâmetro da linha de comando, ex.: --email fulano@x.com.
 function arg(nome) {
   const i = process.argv.indexOf(`--${nome}`);
   return i > -1 ? process.argv[i + 1] : undefined;
 }
 
 async function main() {
+  // Junta os parâmetros; CPF e telefone ficam só com dígitos.
   const dados = {
     email: arg('email'),
     nome: arg('nome'),
@@ -29,12 +31,14 @@ async function main() {
   for (const [k, v] of Object.entries(dados)) {
     if (!v) throw new Error(`Parâmetro obrigatório ausente: --${k}`);
   }
+  // Senha aleatória que ninguém conhece: o admin define a dele pela recuperação de senha.
   const senhaAleatoria = crypto.randomBytes(24).toString('base64url');
   const hash = await bcrypt.hash(senhaAleatoria, 12);
 
   const client = createClient();
   await client.connect();
   try {
+    // Cria o usuário e o vínculo ADMIN na mesma transação (ou tudo, ou nada).
     await client.query('BEGIN');
     const { rows } = await client.query(
       `INSERT INTO usuarios (nome_completo, email, telefone, cpf, data_nascimento, senha_hash)

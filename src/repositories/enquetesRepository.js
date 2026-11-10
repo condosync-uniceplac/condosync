@@ -1,5 +1,12 @@
+/**
+ * Consultas SQL de enquetes (enquetes, enquete_opcoes e votos_enquete).
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
 
 /**
@@ -34,6 +41,7 @@ export async function listByCondominio(condominioId, unidadeId, db = pool) {
   return rows;
 }
 
+// Insere a enquete e devolve o id.
 export async function create(e, db = pool) {
   const { rows } = await db.query(
     `INSERT INTO enquetes (condominio_id, criador_id, pergunta, descricao, encerra_em)
@@ -43,6 +51,7 @@ export async function create(e, db = pool) {
   return rows[0];
 }
 
+// Insere todas as opções de uma vez, numeradas na ordem recebida (WITH ORDINALITY).
 export async function addOpcoes(enqueteId, textos, db = pool) {
   await db.query(
     `INSERT INTO enquete_opcoes (enquete_id, texto, ordem)
@@ -61,6 +70,7 @@ export async function lockAberta(id, condominioId, db = pool) {
   return rows[0] ?? null;
 }
 
+// Confere se a opção pertence à enquete (evita votar em opção de outra enquete).
 export async function opcaoDaEnquete(enqueteId, opcaoId, db = pool) {
   const { rowCount } = await db.query(
     'SELECT 1 FROM enquete_opcoes WHERE id = $1 AND enquete_id = $2',
@@ -92,6 +102,7 @@ export async function encerrar(id, condominioId, vinculoId, db = pool) {
   return rowCount > 0;
 }
 
+// Confere se a enquete existe no condomínio.
 export async function exists(id, condominioId, db = pool) {
   const { rowCount } = await db.query(
     'SELECT 1 FROM enquetes WHERE id = $1 AND condominio_id = $2',
@@ -100,6 +111,7 @@ export async function exists(id, condominioId, db = pool) {
   return rowCount > 0;
 }
 
+// Quantas enquetes do condomínio ainda estão abertas.
 export async function contarAbertas(condominioId, db = pool) {
   const { rows } = await db.query(
     'SELECT count(*)::int AS n FROM enquetes WHERE condominio_id = $1 AND encerra_em > now()',

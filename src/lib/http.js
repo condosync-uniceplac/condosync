@@ -1,3 +1,8 @@
+/**
+ * Funções de apoio às rotas da API: ler o corpo JSON, validar dados, descobrir o IP
+ * e transformar erros em respostas padronizadas.
+ */
+
 import { NextResponse } from 'next/server';
 import { AppError } from './errors';
 
@@ -15,6 +20,7 @@ export function parseWith(schema, data) {
   const result = schema.safeParse(data);
   if (!result.success) {
     const fields = {};
+    // Monta { campo: mensagem }, guardando só a primeira mensagem de cada campo.
     for (const issue of result.error.issues) {
       const key = issue.path.join('.') || '_';
       fields[key] ??= issue.message;

@@ -4,7 +4,9 @@
 -- PNG ou JPG (ou PDF) de até 2 MB, baixada por rota autenticada.
 -- =============================================================
 ALTER TABLE anexos_chamado
+  -- conteudo: bytes da foto; o CHECK limita a 2 MB.
   ADD COLUMN conteudo bytea,
   ADD CONSTRAINT ck_anexo_chamado_tamanho CHECK (tamanho_bytes <= 2097152);
 
+-- Acelera a busca de chamados por unidade.
 CREATE INDEX IF NOT EXISTS ix_chamados_unidade ON chamados (unidade_id);

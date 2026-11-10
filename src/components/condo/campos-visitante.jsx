@@ -1,9 +1,14 @@
 'use client';
 
+/**
+ * Campos do visitante usados nos formulários da portaria e do morador.
+ */
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCpf } from '@/lib/masks';
 
+// Estilo padrão das caixas de seleção (select).
 export const SELECT_CLASSE =
   'h-11 w-full rounded-xl border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 

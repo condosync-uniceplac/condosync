@@ -12,6 +12,7 @@ if (!process.env.DATABASE_URL) {
   }
 }
 
+// Cria a conexão com o PostgreSQL usando DATABASE_URL (com SSL quando DB_SSL=true, caso do Supabase).
 function createClient() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL não definida (veja .env.example)');

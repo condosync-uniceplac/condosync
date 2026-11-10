@@ -1,5 +1,13 @@
+/**
+ * Testes automatizados (Vitest) de portaria e visitantes (visitasService): pré-autorização, não previsto e ações.
+ * Rodam com `npm test` e em todo Pull Request (GitHub Actions).
+ * describe agrupa os casos; cada it(...) é um caso de teste; expect(...) confere o resultado.
+ */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// vi.mock troca o banco/repositórios por funções falsas: o teste confere só a regra de negócio,
+// sem precisar de um banco de verdade.
 vi.mock('@/lib/db', () => ({ query: vi.fn(), withTransaction: vi.fn() }));
 vi.mock('@/repositories/visitasRepository', () => ({
   upsertVisitante: vi.fn(),
@@ -67,6 +75,7 @@ describe('validação do visitante', () => {
 });
 
 describe('visitasService — RN.14', () => {
+  // Antes de cada teste: zera as funções falsas e define as respostas padrão.
   beforeEach(() => {
     vi.clearAllMocks();
     repo.upsertVisitante.mockResolvedValue(7);

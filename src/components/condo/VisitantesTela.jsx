@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Tela Meus Visitantes (morador): pré-autorizar visitante, ver o código do convite e
+ * confirmar/recusar quem chegou sem aviso (RN.14).
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { BellRing, Check, Loader2, Ticket, UserPlus, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -18,9 +24,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useVisitas } from '@/lib/useVisitas';
 
+// Formulário vazio da pré-autorização.
 const vazio = { nome: '', tipoDocumento: 'CPF', documento: '', previsao: '', placa: '' };
 
 export default function Visitantes() {
+  // Visitas da unidade vêm do hook useVisitas.
   const { visitas, carregando, erro, criar, acao } = useVisitas();
   const [form, setForm] = useState(vazio);
   const [convite, setConvite] = useState(null);
@@ -29,6 +37,7 @@ export default function Visitantes() {
   const aguardando = visitas.filter((v) => v.status === 'AGUARDANDO');
   const demais = visitas.filter((v) => v.status !== 'AGUARDANDO');
 
+  // Pré-autoriza o visitante e mostra o código do convite.
   const autorizar = async () => {
     setEnviando(true);
     try {
@@ -42,6 +51,7 @@ export default function Visitantes() {
     }
   };
 
+  // Autoriza, recusa ou cancela uma visita.
   const executar = async (v, nome, mensagem) => {
     try {
       await acao(v.id, nome);
@@ -51,6 +61,7 @@ export default function Visitantes() {
     }
   };
 
+  // Desenho da tela (JSX).
   return (
     <AppLayout
       titulo="Meus Visitantes"

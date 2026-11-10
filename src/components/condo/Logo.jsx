@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Logotipo do CondoSync desenhado em SVG (só o símbolo, ou símbolo + nome).
+ */
+
 import { cn } from '@/lib/utils';
 export function LogoMarca({ className }) {
   return (

@@ -1,6 +1,11 @@
+/**
+ * Etiqueta colorida com a situação da visita (e como foi autorizada).
+ */
+
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
+// Texto e cor de cada status.
 const ROTULOS = {
   AGUARDANDO: 'Aguardando morador',
   AUTORIZADO: 'Autorizado',
@@ -9,6 +14,7 @@ const ROTULOS = {
   CANCELADO: 'Recusado / cancelado',
 };
 
+// Como a visita foi autorizada.
 const VIA = {
   PRE_AUTORIZACAO: 'pré-autorizado pelo morador',
   APP: 'confirmado pelo morador no app',
@@ -36,6 +42,7 @@ export function VisitaStatus({ status, via }) {
   );
 }
 
+// Data e hora no fuso de Brasília.
 export const formatarDataHora = (iso) =>
   iso
     ? new Date(iso).toLocaleString('pt-BR', {

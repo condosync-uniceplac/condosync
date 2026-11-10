@@ -1,3 +1,9 @@
+/**
+ * Testes automatizados (Vitest) de máscaras de CPF/telefone e critérios de senha.
+ * Rodam com `npm test` e em todo Pull Request (GitHub Actions).
+ * describe agrupa os casos; cada it(...) é um caso de teste; expect(...) confere o resultado.
+ */
+
 import { describe, expect, it } from 'vitest';
 import { formatCpf, formatTelefone } from '@/lib/masks';
 import { avaliarSenha } from '@/lib/passwordRules';

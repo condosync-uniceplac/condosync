@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Formulário de login (e-mail ou CPF + senha).
+ */
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -8,9 +12,11 @@ import styles from './AuthCard.module.css';
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Mensagem de erro e envio em andamento.
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
 
+  // Envia as credenciais; se der certo, vai para a página pedida (?next) ou para o painel.
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');
@@ -43,6 +49,7 @@ export default function LoginForm() {
 
   const sessaoExpirada = searchParams.get('sessao') === 'expirada';
 
+  // Desenho da tela (JSX).
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
       {sessaoExpirada && !erro && (

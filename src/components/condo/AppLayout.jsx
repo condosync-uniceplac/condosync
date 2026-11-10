@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Estrutura comum do painel: menu lateral, cabeçalho com o usuário e o conteúdo da página.
+ */
+
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -29,6 +33,7 @@ import {
 import { useCondo } from '@/lib/condo-store';
 import { useAvisosNaoLidos } from '@/lib/useAvisos';
 import { cn } from '@/lib/utils';
+// Itens do menu lateral (o filtro por perfil fica dentro do componente).
 const NAVEGACAO = [
   { titulo: 'Visão Geral', url: '/painel', icone: LayoutDashboard },
   { titulo: 'Reservas', url: '/reservas', icone: CalendarDays },
@@ -40,12 +45,14 @@ const NAVEGACAO = [
   { titulo: 'Administração', url: '/admin', icone: UserCheck },
 ];
 /** ["A","B","C"] -> "Blocos A, B e C" */
+// Texto dos blocos do condomínio para o cartão do menu.
 function listaBlocos(blocos) {
   if (blocos.length === 1) return `Bloco ${blocos[0]}`;
   return `Blocos ${blocos.slice(0, -1).join(', ')} e ${blocos.at(-1)}`;
 }
 
 export function AppLayout({ titulo, subtitulo, children }) {
+  // Usuário, perfil e condomínio vêm do contexto; o contador de avisos vem da API.
   const { estado, usuario, condominio } = useCondo();
   const router = useRouter();
   const caminho = usePathname();
@@ -60,12 +67,14 @@ export function AppLayout({ titulo, subtitulo, children }) {
     if (item.url === '/admin') return perfil === 'sindico';
     return true;
   });
+  // Botão Sair: encerra a sessão e volta para o login.
   const encerrar = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     toast.success('Sessão encerrada com sucesso');
     router.replace('/login');
     router.refresh();
   };
+  // Desenho da tela (JSX).
   return (
     <div className="flex min-h-screen w-full bg-background">
       <aside className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col bg-sidebar px-4 py-6 lg:flex">

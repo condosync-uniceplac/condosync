@@ -1,5 +1,12 @@
+/**
+ * Consultas SQL dos espaços comuns (tabela espacos).
+ * Camada de dados (repository): só executa SQL, sem regras de negócio.
+ * O último parâmetro `db` permite rodar a consulta dentro de uma transação (withTransaction).
+ */
+
 import { query } from '@/lib/db';
 
+// Padrão: usa o pool de conexões; numa transação, recebe o client da transação.
 const pool = { query };
 
 /** Todos os espaços do condomínio (inclusive desativados), com as reservas futuras ativas. */
@@ -17,6 +24,7 @@ export async function listTodos(condominioId, db = pool) {
   return rows;
 }
 
+// Espaço pelo id, só se for do condomínio informado.
 export async function findById(id, condominioId, db = pool) {
   const { rows } = await db.query(
     'SELECT id, nome, ativo FROM espacos WHERE id = $1 AND condominio_id = $2',
@@ -36,6 +44,7 @@ export async function existeNome(condominioId, nome, ignorarId = null, db = pool
   return rows.length > 0;
 }
 
+// Cadastra o espaço e devolve o id.
 export async function create(condominioId, e, db = pool) {
   const { rows } = await db.query(
     `INSERT INTO espacos (condominio_id, nome, descricao, capacidade_pessoas, valor)
@@ -45,6 +54,7 @@ export async function create(condominioId, e, db = pool) {
   return rows[0];
 }
 
+// Atualiza os dados do espaço (inclusive ativar/desativar).
 export async function update(id, e, db = pool) {
   await db.query(
     `UPDATE espacos

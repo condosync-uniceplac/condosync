@@ -1,6 +1,12 @@
+/**
+ * Regras de validação dos dados recebidos pela API (biblioteca zod).
+ * Cada schema descreve os campos de um formulário e as mensagens de erro mostradas ao usuário.
+ */
+
 import { z } from 'zod';
 import { TURNO_IDS } from './turnos';
 
+// Remove tudo que não for dígito (máscaras de CPF, telefone...).
 const onlyDigits = (v) => (typeof v === 'string' ? v.replace(/\D/g, '') : v);
 
 /** Confere os dois dígitos verificadores do CPF (algoritmo da Receita Federal). */
@@ -15,6 +21,7 @@ export function cpfDigitosValidos(cpf) {
   return dv(9) === d[9] && dv(10) === d[10];
 }
 
+// CPF: 11 dígitos, não pode ser tudo igual (111.111...) e os dígitos verificadores precisam bater.
 export const cpfSchema = z.preprocess(
   onlyDigits,
   z
@@ -23,6 +30,7 @@ export const cpfSchema = z.preprocess(
     .refine((v) => !/^(\d)\1{10}$/.test(v) && cpfDigitosValidos(v), 'CPF inválido.'),
 );
 
+// Senha forte (RN.03): 8 a 72 caracteres, com maiúscula, minúscula, número e caractere especial.
 export const senhaForteSchema = z
   .string({ error: 'Senha obrigatória.' })
   .min(8, 'A senha deve ter pelo menos 8 caracteres.')
@@ -32,6 +40,7 @@ export const senhaForteSchema = z
   .regex(/\d/, 'A senha deve ter ao menos um número.')
   .regex(/[^A-Za-z0-9]/, 'A senha deve ter ao menos um caractere especial.');
 
+// Identificador numérico positivo (aceita texto como '12' e converte).
 const idSchema = z.coerce.number().int().positive();
 
 // Perfis que podem se cadastrar pela tela pública (ADMIN é criado só via banco)
@@ -39,6 +48,7 @@ const idSchema = z.coerce.number().int().positive();
 // e as contas da portaria são criadas pelo síndico (RN.06 revisada).
 export const PERFIS_CADASTRO = ['MORADOR'];
 
+// Cadastro público (RF.01/RF.02): dados pessoais, senha, unidade e aceite dos termos.
 export const registerSchema = z
   .object({
     nome: z.string().trim().min(3, 'Informe o nome completo.').max(150),
@@ -73,6 +83,7 @@ export const registerSchema = z
     }
   });
 
+// E-mail em minúsculas e sem espaços.
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 
 /**
@@ -105,15 +116,18 @@ export const loginSchema = z
     return z.NEVER;
   });
 
+// "Esqueci minha senha": só o e-mail.
 export const forgotPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email('E-mail inválido.').max(254),
 });
 
+// Redefinição de senha: token do link + nova senha forte.
 export const resetPasswordSchema = z.object({
   token: z.string({ error: 'Link inválido.' }).min(20, 'Link inválido.').max(200, 'Link inválido.'),
   senha: senhaForteSchema,
 });
 
+// Só o token, para conferir se o link ainda vale antes de mostrar o formulário.
 export const resetTokenSchema = z.object({
   token: z.string({ error: 'Link inválido.' }).min(20, 'Link inválido.').max(200, 'Link inválido.'),
 });
@@ -132,6 +146,7 @@ export const reservaSchema = z.object({
 });
 
 // RF.10 / RN.14 — visitantes
+// Placa opcional: aceita o modelo antigo (ABC1234) e o Mercosul (ABC1D23).
 const placaSchema = z.preprocess(
   (v) => (typeof v === 'string' ? v.toUpperCase().replace(/[^A-Z0-9]/g, '') : v),
   z
@@ -141,6 +156,7 @@ const placaSchema = z.preprocess(
     .or(z.literal('').transform(() => undefined)),
 );
 
+// Dados comuns do visitante: nome, tipo e número do documento e placa.
 const visitanteBase = z
   .object({
     nome: z
@@ -188,6 +204,7 @@ export const visitaNaoPrevistaSchema = visitanteBase.and(
   }),
 );
 
+// Ações possíveis sobre uma visita (ver a máquina de estados em visitasService).
 export const ACOES_VISITA = ['AUTORIZAR', 'RECUSAR', 'CANCELAR', 'ENTRADA', 'SAIDA'];
 export const acaoVisitaSchema = z.object({
   acao: z.enum(ACOES_VISITA, { error: 'Ação inválida.' }),
@@ -266,6 +283,7 @@ export const chamadoSchema = z.object({
   urgencia: z.enum(['BAIXA', 'MEDIA', 'ALTA'], { error: 'Escolha a urgência.' }),
 });
 
+// Comentário de acompanhamento do chamado: de 3 a 1000 caracteres.
 const comentarioChamado = z
   .string({ error: 'Escreva o comentário.' })
   .trim()

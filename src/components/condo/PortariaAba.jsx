@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Aba Portaria da Administração: o síndico cria contas de porteiro (com convite) e desativa.
+ * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
+ */
+
 import { Loader2, Mail, ShieldCheck, UserMinus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -9,10 +14,12 @@ import { Label } from '@/components/ui/label';
 import { enviarJson, lerResposta } from '@/lib/apiClient';
 import { formatCpf, formatTelefone } from '@/lib/masks';
 
+// Formulário vazio da conta de porteiro.
 const vazio = { nome: '', email: '', cpf: '', telefone: '', dataNascimento: '' };
 
 /** RN.06 (revisada): o síndico cria as contas da portaria; o porteiro define a senha pelo convite. */
 export function PortariaAba() {
+  // Estado: contas, formulário, envio e link de convite (quando o e-mail não sai).
   const [contas, setContas] = useState(null);
   const [form, setForm] = useState(vazio);
   const [enviando, setEnviando] = useState(false);
@@ -32,9 +39,11 @@ export function PortariaAba() {
     carregar();
   }, [carregar]);
 
+  // Atualiza um campo, aplicando a máscara quando houver (CPF, telefone).
   const set = (k, fmt) => (e) =>
     setForm({ ...form, [k]: fmt ? fmt(e.target.value) : e.target.value });
 
+  // Cria a conta; se o e-mail falhar, mostra o link para repassar ao porteiro.
   const criar = async () => {
     setEnviando(true);
     try {
@@ -53,6 +62,7 @@ export function PortariaAba() {
     }
   };
 
+  // Desativa a conta depois de confirmar.
   const desativar = async (c) => {
     if (!window.confirm(`Desativar a conta de ${c.nome}? Ele perde o acesso à portaria.`)) return;
     try {
@@ -64,6 +74,7 @@ export function PortariaAba() {
     }
   };
 
+  // Desenho da tela (JSX).
   return (
     <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
       {linkManual && (

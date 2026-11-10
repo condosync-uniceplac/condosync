@@ -1,3 +1,9 @@
+/**
+ * Gestão de moradores e contas da portaria pelo síndico (RN.04 / RN.06).
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { AppError } from '@/lib/errors';
 import { hashPassword } from '@/lib/password';
 import { randomBytes } from 'node:crypto';
@@ -18,10 +24,12 @@ import { unidadeDoCondominio } from '@/services/cadastrosService';
  */
 export const GESTAO = ['SINDICO', 'ADMIN'];
 
+// Barra quem não é síndico/administrador.
 const exigirGestao = (session) => {
   if (!GESTAO.includes(session.perfil)) throw new AppError(403, 'Acesso negado.');
 };
 
+// Todas as unidades com os moradores de cada uma (aba Moradores).
 export async function listarUnidades(session) {
   exigirGestao(session);
   const [unidades, residentes] = await Promise.all([
@@ -44,6 +52,7 @@ export async function listarUnidades(session) {
   }));
 }
 
+// Troca o morador de unidade; a sessão dele expira e ele entra de novo.
 export async function moverDeUnidade(session, vinculoId, unidadeId) {
   exigirGestao(session);
   const vinculo = await vinculosRepo.findAtivo(vinculoId, session.condominioId, [
@@ -63,6 +72,7 @@ export async function moverDeUnidade(session, vinculoId, unidadeId) {
   }
 }
 
+// Encerra o vínculo de quem saiu do condomínio (o síndico precisa deixar a função antes).
 export async function removerMorador(session, vinculoId) {
   exigirGestao(session);
   const vinculo = await vinculosRepo.findAtivo(vinculoId, session.condominioId, [
@@ -79,6 +89,7 @@ export async function removerMorador(session, vinculoId) {
   await vinculosRepo.encerrar(vinculo.id);
 }
 
+// Contas da portaria (aba Portaria).
 export async function listarPortaria(session) {
   exigirGestao(session);
   const contas = await vinculosRepo.listPortaria(session.condominioId);
@@ -94,6 +105,7 @@ export async function listarPortaria(session) {
 /** Cria a conta da portaria (ativa) e envia o convite para o porteiro definir a senha. */
 export async function criarPortaria(session, dados) {
   exigirGestao(session);
+  // A conta nasce com uma senha aleatória; o porteiro define a dele pelo link do convite.
   const senhaHash = await hashPassword(randomBytes(24).toString('base64url'));
   let usuario;
   try {
@@ -121,6 +133,7 @@ export async function criarPortaria(session, dados) {
   };
 }
 
+// Desativa a conta do porteiro (encerra o vínculo).
 export async function desativarPortaria(session, vinculoId) {
   exigirGestao(session);
   const vinculo = await vinculosRepo.findAtivo(vinculoId, session.condominioId, ['PORTARIA']);

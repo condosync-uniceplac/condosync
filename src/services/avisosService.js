@@ -1,3 +1,9 @@
+/**
+ * Mural de avisos (RN.20).
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { withTransaction } from '@/lib/db';
 import { AppError } from '@/lib/errors';
 import { nomeSeguro, validarAnexo } from '@/lib/anexos';
@@ -12,12 +18,14 @@ import * as avisosRepo from '@/repositories/avisosRepository';
  */
 export const PUBLICAM = ['SINDICO', 'ADMIN'];
 
+// Barra quem não é síndico/administrador nas ações de publicação.
 const exigirPublicador = (s) => {
   if (!PUBLICAM.includes(s.perfil)) {
     throw new AppError(403, 'Apenas o síndico pode publicar avisos.');
   }
 };
 
+// Converte a linha do banco no formato usado pela tela ("editado" = alterado 1 min após publicar).
 const paraTela = (a) => ({
   id: Number(a.id),
   titulo: a.titulo,
@@ -38,6 +46,7 @@ const paraTela = (a) => ({
   })),
 });
 
+// Mural do condomínio + categorias + se o usuário pode publicar.
 export async function listarMural(session, { categoriaId } = {}) {
   const [avisos, categorias] = await Promise.all([
     avisosRepo.listByCondominio(session.condominioId, session.sub, { categoriaId }),
@@ -50,16 +59,19 @@ export async function listarMural(session, { categoriaId } = {}) {
   };
 }
 
+// Quantidade de avisos não lidos (sino e menu).
 export async function resumo(session) {
   return { naoLidos: await avisosRepo.contarNaoLidos(session.condominioId, session.sub) };
 }
 
+// A categoria escolhida precisa existir.
 async function exigirCategoria(categoriaId) {
   if (!(await avisosRepo.categoriaExiste(categoriaId))) {
     throw new AppError(422, 'Dados inválidos.', { categoriaId: 'Categoria não encontrada.' });
   }
 }
 
+// Valida o arquivo (tipo pelo conteúdo e tamanho) e prepara para gravar.
 function prepararAnexo(arquivo) {
   if (!arquivo) return null;
   const { mime, erro } = validarAnexo(arquivo.nome, arquivo.conteudo);
@@ -72,6 +84,7 @@ function prepararAnexo(arquivo) {
   };
 }
 
+// Publica o aviso com anexo opcional; quem publica já conta como leitor.
 export async function publicar(session, dados, arquivo) {
   exigirPublicador(session);
   await exigirCategoria(dados.categoriaId);
@@ -102,6 +115,7 @@ export async function editar(session, id, dados, arquivo, { removerAnexo = false
   });
 }
 
+// Remove o aviso do mural (só síndico/administrador).
 export async function remover(session, id) {
   exigirPublicador(session);
   const aviso = await avisosRepo.findById(id, session.condominioId);
@@ -109,12 +123,14 @@ export async function remover(session, id) {
   await avisosRepo.remove(aviso.id);
 }
 
+// Registra que o usuário leu o aviso.
 export async function confirmarLeitura(session, id) {
   const aviso = await avisosRepo.findById(id, session.condominioId);
   if (!aviso) throw new AppError(404, 'Aviso não encontrado.');
   await avisosRepo.marcarLido(aviso.id, session.sub);
 }
 
+// Devolve o arquivo só se o aviso for do condomínio de quem pede (bug #19).
 export async function baixarAnexo(session, avisoId, anexoId) {
   const anexo = await avisosRepo.findAnexo(avisoId, anexoId, session.condominioId);
   if (!anexo?.conteudo) throw new AppError(404, 'Anexo não encontrado.');

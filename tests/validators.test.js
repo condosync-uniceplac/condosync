@@ -1,3 +1,9 @@
+/**
+ * Testes automatizados (Vitest) de regras de validação dos formulários (validators.js).
+ * Rodam com `npm test` e em todo Pull Request (GitHub Actions).
+ * describe agrupa os casos; cada it(...) é um caso de teste; expect(...) confere o resultado.
+ */
+
 import { describe, expect, it } from 'vitest';
 import {
   cpfSchema,

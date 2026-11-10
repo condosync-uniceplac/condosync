@@ -1,3 +1,9 @@
+/**
+ * Autenticação: cadastro, login, recuperação de senha e convite de conta.
+ * Camada de regras de negócio (service): confere o perfil de quem pede, valida as regras
+ * e chama os repositories. Os erros (AppError) viram a resposta HTTP na rota da API.
+ */
+
 import { createHash, randomBytes } from 'node:crypto';
 import { withTransaction } from '@/lib/db';
 import { AppError } from '@/lib/errors';
@@ -12,6 +18,8 @@ import * as termosRepo from '@/repositories/termosRepository';
 import * as recuperacoesRepo from '@/repositories/recuperacoesSenhaRepository';
 import * as tentativasRepo from '@/repositories/tentativasLoginRepository';
 
+// Configurações: mensagem genérica de login, limite de 5 falhas em 15 minutos
+// e validade dos links de senha (1 h para recuperação, 48 h para convite).
 const LOGIN_INVALIDO = 'Credenciais inválidas.';
 const MAX_TENTATIVAS = 5;
 const JANELA_TENTATIVAS_MIN = 15;
@@ -27,6 +35,7 @@ export async function register(data, { ip } = {}) {
   let condominioId = data.condominioId;
   let unidadeId = data.unidadeId ?? null;
 
+  // Descobre o condomínio pela unidade escolhida (ou confere o condomínio informado).
   if (unidadeId) {
     const unidade = await condominiosRepo.findUnidade(unidadeId);
     if (!unidade || (condominioId && Number(unidade.condominio_id) !== condominioId)) {
@@ -37,6 +46,7 @@ export async function register(data, { ip } = {}) {
     throw new AppError(422, 'Dados inválidos.', { condominioId: 'Condomínio não encontrado.' });
   }
 
+  // Precisa haver Termos de Uso e Política de Privacidade vigentes para registrar o aceite.
   const termos = await termosRepo.listVigentes();
   const tipos = new Set(termos.map((t) => t.tipo));
   if (!tipos.has('TERMOS_USO') || !tipos.has('POLITICA_PRIVACIDADE')) {
@@ -46,6 +56,7 @@ export async function register(data, { ip } = {}) {
   const senhaHash = await hashPassword(data.senha);
 
   try {
+    // Usuário, vínculo (inativo = pendente) e aceites são gravados juntos, numa transação.
     return await withTransaction(async (client) => {
       const usuario = await usuariosRepo.create({ ...data, senhaHash }, client);
       const vinculo = await vinculosRepo.create(
@@ -73,6 +84,7 @@ export async function register(data, { ip } = {}) {
       };
     });
   } catch (err) {
+    // 23505 = violação de chave única no PostgreSQL: e-mail ou CPF já cadastrado.
     if (err.code === '23505') {
       throw new AppError(409, 'Já existe um cadastro com este e-mail ou CPF.');
     }
@@ -86,6 +98,7 @@ export async function register(data, { ip } = {}) {
  * temporariamente (mesma resposta exista ou não a conta).
  */
 export async function login({ tipo, valor, senha }, { ip } = {}) {
+  // Bloqueio por excesso de tentativas: conta as falhas recentes desse e-mail/CPF.
   const identificador = `${tipo}:${valor}`;
   const falhas = await tentativasRepo.contarFalhasRecentes(identificador, JANELA_TENTATIVAS_MIN);
   if (falhas >= MAX_TENTATIVAS) {
@@ -99,12 +112,14 @@ export async function login({ tipo, valor, senha }, { ip } = {}) {
   // Sempre roda o bcrypt (mesmo sem usuário) para não revelar cadastros pelo tempo de resposta
   const senhaOk = await verifyPassword(senha, usuario?.senha_hash);
 
+  // Qualquer falha gera a mesma mensagem, para não revelar se a conta existe.
   if (!usuario || !senhaOk || !usuario.ativo) {
     await tentativasRepo.registrarFalha(identificador, ip);
     throw new AppError(401, LOGIN_INVALIDO);
   }
   await tentativasRepo.limpar(identificador);
 
+  // Usa o vínculo ativo de perfil mais alto; sem vínculo ativo, o cadastro ainda não foi aprovado.
   const [vinculo] = await vinculosRepo.listAtivosByUsuario(usuario.id);
   if (!vinculo) {
     // Credenciais já conferidas: aqui é seguro ser específico
@@ -117,6 +132,7 @@ export async function login({ tipo, valor, senha }, { ip } = {}) {
     );
   }
 
+  // Dados guardados no token de sessão (sem informações sensíveis).
   const sessao = {
     sub: String(usuario.id),
     nome: usuario.nome_completo,
@@ -165,6 +181,7 @@ export async function enviarConvite(usuario) {
   });
 }
 
+// Gera um token aleatório, guarda só o hash dele e envia o link por e-mail.
 async function enviarLinkDeSenha(usuario, { ttlMs, assunto, texto }) {
   const token = randomBytes(32).toString('base64url');
   await withTransaction(async (client) => {
@@ -194,6 +211,7 @@ export async function resetPassword({ token, senha }) {
   if (!pedido) {
     throw new AppError(400, 'Este link de redefinição é inválido ou expirou. Solicite um novo.');
   }
+  // A nova senha não pode ser igual à atual.
   const senhaAtual = await usuariosRepo.findSenhaHash(pedido.usuario_id);
   if (senhaAtual && (await verifyPassword(senha, senhaAtual))) {
     throw new AppError(422, 'Dados inválidos.', {
@@ -208,6 +226,7 @@ export async function resetPassword({ token, senha }) {
   });
 }
 
+// SHA-256 do token: o banco nunca guarda o token original.
 function hashToken(token) {
   return createHash('sha256').update(token).digest('hex');
 }

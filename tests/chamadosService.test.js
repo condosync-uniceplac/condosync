@@ -1,5 +1,13 @@
+/**
+ * Testes automatizados (Vitest) de chamados (chamadosService): cada combinação de perfil e status da RN.22.
+ * Rodam com `npm test` e em todo Pull Request (GitHub Actions).
+ * describe agrupa os casos; cada it(...) é um caso de teste; expect(...) confere o resultado.
+ */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// vi.mock troca o banco/repositórios por funções falsas: o teste confere só a regra de negócio,
+// sem precisar de um banco de verdade.
 vi.mock('@/lib/db', () => ({ withTransaction: (fn) => fn('tx'), query: vi.fn() }));
 vi.mock('@/repositories/chamadosRepository', () => ({
   listByCondominio: vi.fn(),
@@ -61,6 +69,7 @@ describe('tabela de transições (RN.22 / bug #18)', () => {
 });
 
 describe('chamadosService', () => {
+  // Antes de cada teste: zera as funções falsas e define as respostas padrão.
   beforeEach(() => {
     vi.clearAllMocks();
     repo.categoriaExiste.mockResolvedValue(true);
