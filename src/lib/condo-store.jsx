@@ -13,42 +13,6 @@ export const formatarData = (valor) => {
 };
 const estadoInicial = {
   sessao: null,
-  chamados: [
-    {
-      id: 'c1',
-      titulo: 'Barulho excessivo após as 23h',
-      categoria: 'Barulho',
-      descricao: 'Som alto vindo do apartamento vizinho durante a madrugada de sábado.',
-      urgencia: 'Média',
-      status: 'aberto',
-      autor: 'Marcos Souza',
-      unidade: 'Apto 104 - Bloco B',
-      data: iso(-1),
-    },
-    {
-      id: 'c2',
-      titulo: 'Vaga de garagem ocupada indevidamente',
-      categoria: 'Vaga de Garagem',
-      descricao: 'Veículo desconhecido estacionado na vaga 118 há dois dias.',
-      urgencia: 'Alta',
-      status: 'analise',
-      autor: 'Fernanda Lima Barreto',
-      unidade: 'Apto 302 - Bloco A',
-      data: iso(-2),
-      anexo: 'foto-vaga.jpg',
-    },
-    {
-      id: 'c3',
-      titulo: 'Lâmpada queimada na escada do Bloco C',
-      categoria: 'Manutenção',
-      descricao: 'Iluminação do 4º andar apagada desde quinta-feira.',
-      urgencia: 'Baixa',
-      status: 'resolvido',
-      autor: 'Juliana Ferreira',
-      unidade: 'Apto 701 - Bloco C',
-      data: iso(-5),
-    },
-  ],
   enquetes: [
     {
       id: 'e1',
@@ -94,26 +58,6 @@ export function CondoProvider({ children, sessao, usuario }) {
       /* ignora */
     }
   }, [estado]);
-  const criarChamado = useCallback((dados) => {
-    setEstado((e) => ({
-      ...e,
-      chamados: [
-        {
-          ...dados,
-          id: crypto.randomUUID(),
-          status: 'aberto',
-          data: new Date().toISOString().slice(0, 10),
-        },
-        ...e.chamados,
-      ],
-    }));
-  }, []);
-  const moverChamado = useCallback((id, status) => {
-    setEstado((e) => ({
-      ...e,
-      chamados: e.chamados.map((c) => (c.id === id ? { ...c, status } : c)),
-    }));
-  }, []);
   const votar = useCallback((enqueteId, opcaoId) => {
     setEstado((e) => ({
       ...e,
@@ -136,11 +80,9 @@ export function CondoProvider({ children, sessao, usuario }) {
     () => ({
       estado,
       usuario,
-      criarChamado,
-      moverChamado,
       votar,
     }),
-    [estado, usuario, criarChamado, moverChamado, votar],
+    [estado, usuario, votar],
   );
   return <CondoContext.Provider value={valor}>{children}</CondoContext.Provider>;
 }

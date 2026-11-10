@@ -246,3 +246,37 @@ export const avisoSchema = z.object({
     .positive('Escolha a categoria.'),
   prioridade: z.enum(['NORMAL', 'URGENTE'], { error: 'Escolha a urgência.' }),
 });
+
+// RN.22 — chamado (campos do formulário; a foto é validada à parte)
+export const chamadoSchema = z.object({
+  titulo: z
+    .string({ error: 'Informe o título.' })
+    .trim()
+    .min(5, 'O título deve ter pelo menos 5 caracteres.')
+    .max(200, 'Título muito longo.'),
+  descricao: z
+    .string({ error: 'Descreva a ocorrência.' })
+    .trim()
+    .min(10, 'A descrição deve ter pelo menos 10 caracteres.')
+    .max(2000, 'Descrição muito longa.'),
+  categoriaId: z.coerce
+    .number({ error: 'Escolha a categoria.' })
+    .int()
+    .positive('Escolha a categoria.'),
+  urgencia: z.enum(['BAIXA', 'MEDIA', 'ALTA'], { error: 'Escolha a urgência.' }),
+});
+
+const comentarioChamado = z
+  .string({ error: 'Escreva o comentário.' })
+  .trim()
+  .min(3, 'O comentário deve ter pelo menos 3 caracteres.')
+  .max(1000, 'Comentário muito longo.');
+
+// RN.22 — troca de status (comentário opcional junto)
+export const statusChamadoSchema = z.object({
+  status: z.enum(['ABERTO', 'EM_ANALISE', 'RESOLVIDO'], { error: 'Status inválido.' }),
+  comentario: comentarioChamado.optional().or(z.literal('').transform(() => undefined)),
+});
+
+// RN.22 — comentário de acompanhamento
+export const comentarioChamadoSchema = z.object({ comentario: comentarioChamado });

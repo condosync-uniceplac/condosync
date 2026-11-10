@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { useCondo } from '@/lib/condo-store';
 import { dataLocal, turnoDaReserva } from '@/lib/turnos';
 import { useAvisos } from '@/lib/useAvisos';
+import { useChamadosAbertos } from '@/lib/useChamados';
 import { useReservas } from '@/lib/useReservas';
 import { useVisitas } from '@/lib/useVisitas';
 import { VisitaStatus, formatarDataHora } from '@/components/condo/VisitaStatus';
@@ -42,7 +43,7 @@ export default function Painel() {
   ).length;
   const ehMorador = estado.sessao?.perfil === 'morador';
   const naoLidos = avisos.filter((a) => !a.lido).length;
-  const abertos = estado.chamados.filter((c) => c.status !== 'resolvido').length;
+  const abertos = useChamadosAbertos();
   const indicadores = [
     {
       titulo: 'Próxima Reserva Agendada',
@@ -71,8 +72,8 @@ export default function Painel() {
     },
     {
       titulo: 'Ocorrências Abertas',
-      valor: String(abertos),
-      detalhe: 'Chamados em andamento',
+      valor: abertos === null ? '…' : String(abertos),
+      detalhe: ehMorador ? 'Seus chamados em andamento' : 'Chamados em andamento',
       icone: AlertTriangle,
       cor: 'text-warning-foreground bg-warning/15',
     },
