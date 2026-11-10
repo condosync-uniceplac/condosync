@@ -13,59 +13,6 @@ export const formatarData = (valor) => {
 };
 const estadoInicial = {
   sessao: null,
-  avisos: [
-    {
-      id: 'a1',
-      titulo: 'Interrupção no fornecimento de água na terça-feira',
-      texto:
-        'A manutenção preventiva das bombas do reservatório superior ocorrerá das 09h às 14h. Recomendamos armazenar água para consumo.',
-      categoria: 'Obras',
-      prioridade: 'Urgente',
-      data: iso(-1),
-      autor: 'Administração CondoSync',
-      anexo: 'cronograma-manutencao.pdf',
-      leituras: 42,
-      lido: false,
-    },
-    {
-      id: 'a2',
-      titulo: 'Convocação: Assembleia Geral Ordinária',
-      texto:
-        'Pauta: prestação de contas do exercício, previsão orçamentária e eleição do conselho fiscal. Presença híbrida no salão nobre.',
-      categoria: 'Assembleias',
-      prioridade: 'Manutenção',
-      data: iso(-3),
-      autor: 'Carlos Eduardo Mendes',
-      anexo: 'edital-assembleia.pdf',
-      leituras: 87,
-      lido: false,
-    },
-    {
-      id: 'a3',
-      titulo: 'Festa Junina dos moradores',
-      texto:
-        'Inscrições abertas para as barracas de comidas típicas. A confraternização acontece na quadra poliesportiva.',
-      categoria: 'Normas',
-      prioridade: 'Social',
-      data: iso(-6),
-      autor: 'Comissão de Eventos',
-      leituras: 63,
-      lido: true,
-    },
-    {
-      id: 'a4',
-      titulo: 'Reajuste da taxa condominial a partir do próximo mês',
-      texto:
-        'Aprovado em assembleia o reajuste de 4,2% referente ao acordo coletivo dos funcionários. Boletos já atualizados.',
-      categoria: 'Financeiro',
-      prioridade: 'Manutenção',
-      data: iso(-9),
-      autor: 'Administradora Pátio Gestão',
-      anexo: 'planilha-orcamento.pdf',
-      leituras: 118,
-      lido: true,
-    },
-  ],
   chamados: [
     {
       id: 'c1',
@@ -129,7 +76,7 @@ const estadoInicial = {
 const CondoContext = createContext(null);
 const CHAVE = 'condosync-estado';
 // `sessao` e `usuario` vêm do login real (servidor); o restante são dados de demonstração.
-// Reservas e visitas já vêm do banco (useReservas, useVisitas); os demais módulos serão migrados nas próximas sprints.
+// Reservas, visitas e avisos já vêm do banco (useReservas, useVisitas, useAvisos); os demais módulos serão migrados nas próximas sprints.
 export function CondoProvider({ children, sessao, usuario }) {
   const [estado, setEstado] = useState({ ...estadoInicial, sessao });
   useEffect(() => {
@@ -147,14 +94,6 @@ export function CondoProvider({ children, sessao, usuario }) {
       /* ignora */
     }
   }, [estado]);
-  const marcarLido = useCallback((id) => {
-    setEstado((e) => ({
-      ...e,
-      avisos: e.avisos.map((a) =>
-        a.id === id && !a.lido ? { ...a, lido: true, leituras: a.leituras + 1 } : a,
-      ),
-    }));
-  }, []);
   const criarChamado = useCallback((dados) => {
     setEstado((e) => ({
       ...e,
@@ -197,12 +136,11 @@ export function CondoProvider({ children, sessao, usuario }) {
     () => ({
       estado,
       usuario,
-      marcarLido,
       criarChamado,
       moverChamado,
       votar,
     }),
-    [estado, usuario, marcarLido, criarChamado, moverChamado, votar],
+    [estado, usuario, criarChamado, moverChamado, votar],
   );
   return <CondoContext.Provider value={valor}>{children}</CondoContext.Provider>;
 }

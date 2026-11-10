@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useCondo } from '@/lib/condo-store';
+import { useAvisosNaoLidos } from '@/lib/useAvisos';
 import { cn } from '@/lib/utils';
 const NAVEGACAO = [
   { titulo: 'Visão Geral', url: '/painel', icone: LayoutDashboard },
@@ -42,7 +43,7 @@ export function AppLayout({ titulo, subtitulo, children }) {
   const { estado, usuario } = useCondo();
   const router = useRouter();
   const caminho = usePathname();
-  const naoLidos = estado.avisos.filter((a) => !a.lido).length;
+  const naoLidos = useAvisosNaoLidos(Boolean(estado.sessao) && estado.sessao.perfil !== 'admin');
   if (!estado.sessao || !usuario) return null;
   // Itens só aparecem para quem tem acesso (mesma regra do middleware/RBAC)
   const perfil = estado.sessao.perfil;

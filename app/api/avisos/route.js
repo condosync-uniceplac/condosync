@@ -1,14 +1,30 @@
 import { NextResponse } from 'next/server';
-import { handleError } from '@/lib/http';
+import { z } from 'zod';
+import { lerFormularioAviso } from '@/lib/formAviso';
+import { handleError, parseWith } from '@/lib/http';
 import { requireSession } from '@/lib/session';
-import { listarMural } from '@/services/avisosService';
+import { listarMural, publicar } from '@/services/avisosService';
 
-// GET /api/avisos — exemplo de módulo completo (rota -> service -> repository)
-export async function GET() {
+const filtroSchema = z.coerce.number().int().positive().optional();
+
+// GET /api/avisos?categoriaId= — mural com leitura do usuário, leituras e anexos
+export async function GET(request) {
   try {
     const session = await requireSession();
-    const avisos = await listarMural(session);
-    return NextResponse.json({ avisos });
+    const param = new URL(request.url).searchParams.get('categoriaId');
+    const categoriaId = parseWith(filtroSchema, param || undefined);
+    return NextResponse.json(await listarMural(session, { categoriaId }));
+  } catch (err) {
+    return handleError(err, 'avisos');
+  }
+}
+
+// POST /api/avisos (multipart) — síndico publica: titulo, corpo, categoriaId, prioridade, anexo?
+export async function POST(request) {
+  try {
+    const session = await requireSession();
+    const { dados, arquivo } = await lerFormularioAviso(request);
+    return NextResponse.json({ aviso: await publicar(session, dados, arquivo) }, { status: 201 });
   } catch (err) {
     return handleError(err, 'avisos');
   }
