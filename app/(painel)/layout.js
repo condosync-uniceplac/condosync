@@ -36,7 +36,9 @@ export default async function PainelLayout({ children }) {
   // "Cargo" exibido no topo: unidade para morador; nome do perfil para os demais.
   let cargo = PERFIL_LABEL[session.perfil];
   let email = '';
+  let condominio = null;
   try {
+    condominio = await condominiosRepo.findResumo(session.condominioId);
     if (session.unidadeId) {
       const unidade = await condominiosRepo.findUnidade(session.unidadeId);
       const apto = unidade ? `Apto ${unidade.numero} - ${unidade.bloco}` : null;
@@ -53,6 +55,7 @@ export default async function PainelLayout({ children }) {
     <CondoShell
       sessao={{ email, perfil }}
       usuario={{ nome: session.nome, cargo, email, iniciais: iniciais(session.nome) }}
+      condominio={condominio}
     >
       {children}
     </CondoShell>

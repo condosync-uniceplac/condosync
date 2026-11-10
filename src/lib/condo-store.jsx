@@ -9,9 +9,9 @@ const CHAVE_ANTIGA = 'condosync-estado';
 /**
  * `sessao` e `usuario` vêm do login real (servidor). Todos os módulos já buscam
  * os dados na API (useReservas, useVisitas, useAvisos, useChamados, useEnquetes);
- * o contexto só distribui quem está logado.
+ * o contexto só distribui quem está logado e o condomínio da sessão.
  */
-export function CondoProvider({ children, sessao, usuario }) {
+export function CondoProvider({ children, sessao, usuario, condominio }) {
   useEffect(() => {
     try {
       localStorage.removeItem(CHAVE_ANTIGA);
@@ -19,7 +19,10 @@ export function CondoProvider({ children, sessao, usuario }) {
       /* ignora */
     }
   }, []);
-  const valor = useMemo(() => ({ estado: { sessao }, usuario }), [sessao, usuario]);
+  const valor = useMemo(
+    () => ({ estado: { sessao }, usuario, condominio }),
+    [sessao, usuario, condominio],
+  );
   return <CondoContext.Provider value={valor}>{children}</CondoContext.Provider>;
 }
 
