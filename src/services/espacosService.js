@@ -29,6 +29,8 @@ const paraTela = (e) => ({
   valor: Number(e.valor),
   ativo: e.ativo,
   reservasFuturas: e.reservas_futuras ?? 0,
+  // Só espaço sem nenhuma reserva pode ser excluído (o histórico das reservas fica preservado).
+  podeExcluir: !e.tem_reservas,
 });
 
 // Recusa nome repetido no mesmo condomínio.
@@ -59,4 +61,21 @@ export async function editar(session, id, dados) {
   if (!espaco) throw new AppError(404, 'Espaço não encontrado.');
   await nomeLivre(session, dados.nome, espaco.id);
   await espacosRepo.update(espaco.id, dados);
+}
+
+/**
+ * Exclui um espaço cadastrado por engano. Se ele já teve qualquer reserva, recusa (409):
+ * apagar quebraria o histórico, então o caminho é desativar ("Disponível para reserva").
+ */
+export async function excluir(session, id) {
+  exigirGestao(session);
+  const espaco = await espacosRepo.findById(id, session.condominioId);
+  if (!espaco) throw new AppError(404, 'Espaço não encontrado.');
+  const apagou = await espacosRepo.removeSemReservas(espaco.id, session.condominioId);
+  if (!apagou) {
+    throw new AppError(
+      409,
+      'Este espaço tem histórico de reservas e não pode ser excluído. Desative-o para tirá-lo das reservas.',
+    );
+  }
 }

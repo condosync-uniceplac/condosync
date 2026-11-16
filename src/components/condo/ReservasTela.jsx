@@ -6,10 +6,11 @@
  * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
  */
 
-import { CalendarDays, CheckCircle2, Loader2, Trash2, Users } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Loader2, Phone, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { SELECT_CLASSE } from '@/components/condo/campos-visitante';
 import {
   Campo,
   Contador,
@@ -38,6 +39,7 @@ import {
   sobrepoe,
   turnoDaReserva,
 } from '@/lib/turnos';
+import { useCondo } from '@/lib/condo-store';
 import { useReservas } from '@/lib/useReservas';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +55,20 @@ export default function Reservas() {
   // Dados e ações vêm do hook useReservas.
   const { podeReservar, espacos, reservas, ocupacao, carregando, erro, criar, cancelar } =
     useReservas();
+  const { estado } = useCondo();
+  const perfil = estado.sessao?.perfil;
+  const ehMorador = perfil === 'morador';
+  // Síndico e admin cancelam qualquer reserva; a portaria só consulta.
+  const ehGestao = perfil === 'sindico' || perfil === 'admin';
+  // Filtros da lista do condomínio (portaria/síndico): espaço e busca por nome ou unidade.
+  const [filtroEspaco, setFiltroEspaco] = useState('');
+  const [buscaReserva, setBuscaReserva] = useState('');
+  const termoReserva = buscaReserva.trim().toLowerCase();
+  const reservasVisiveis = reservas.filter(
+    (r) =>
+      (!filtroEspaco || String(r.espacoId) === filtroEspaco) &&
+      (!termoReserva || `${r.responsavel} ${r.unidade ?? ''}`.toLowerCase().includes(termoReserva)),
+  );
   // Estado do formulário de reserva (espaço, data, turno e convidados).
   const [espaco, setEspaco] = useState(null);
   const [data, setData] = useState('');
@@ -155,7 +171,7 @@ export default function Reservas() {
             Espaços disponíveis
           </TabsTrigger>
           <TabsTrigger value="minhas" className="rounded-lg">
-            {podeReservar ? 'Minhas Reservas Ativas' : 'Reservas do condomínio'}
+            {ehMorador ? 'Minhas Reservas Ativas' : 'Reservas do condomínio'}
           </TabsTrigger>
         </TabsList>
 
@@ -197,15 +213,38 @@ export default function Reservas() {
 
         <TabsContent value="minhas" className="mt-5">
           <div className="space-y-3">
-            {!carregando && reservas.length === 0 && (
+            {!ehMorador && (
+              <div className="flex flex-wrap gap-2">
+                <select
+                  aria-label="Filtrar por espaço"
+                  value={filtroEspaco}
+                  onChange={(e) => setFiltroEspaco(e.target.value)}
+                  className={SELECT_CLASSE.replace('w-full', 'w-56')}
+                >
+                  <option value="">Todos os espaços</option>
+                  {espacos.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nome}
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  value={buscaReserva}
+                  onChange={(e) => setBuscaReserva(e.target.value)}
+                  placeholder="Buscar por morador ou unidade"
+                  className="h-11 w-64 rounded-xl"
+                />
+              </div>
+            )}
+            {!carregando && reservasVisiveis.length === 0 && (
               <p className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
                 Nenhuma reserva ativa no momento.
               </p>
             )}
-            {reservas.map((r) => {
+            {reservasVisiveis.map((r) => {
               const dia = dataLocal(r.inicio);
               const t = turnoDaReserva(r.inicio, r.fim);
-              const podeCancelar = r.minha || !podeReservar;
+              const podeCancelar = r.minha || ehGestao;
               return (
                 <div
                   key={r.id}
@@ -223,7 +262,16 @@ export default function Reservas() {
                     <p className="text-xs text-muted-foreground">
                       {r.responsavel}
                       {r.unidade ? ` — ${r.unidade}` : ''}
+                      {r.minha && !ehMorador ? ' (sua reserva)' : ''}
                     </p>
+                    {r.telefone && (
+                      <a
+                        href={`tel:${r.telefone.replace(/\D/g, '')}`}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                      >
+                        <Phone className="h-3 w-3" /> {r.telefone}
+                      </a>
+                    )}
                   </div>
                   <Badge className="rounded-full border-0 bg-success/15 text-success">
                     <CheckCircle2 className="mr-1 h-3 w-3" /> Confirmada

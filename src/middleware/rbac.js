@@ -36,6 +36,8 @@ const RULES = [
   { prefix: '/api/admin', perfis: [PERFIS.SINDICO, PERFIS.ADMIN] },
   { prefix: '/portaria', perfis: [PERFIS.PORTARIA, PERFIS.SINDICO, PERFIS.ADMIN] },
   { prefix: '/visitantes', perfis: [PERFIS.MORADOR] },
+  // A portaria não participa das enquetes (só quem tem unidade vota).
+  { prefix: '/enquetes', perfis: [PERFIS.MORADOR, PERFIS.SINDICO, PERFIS.ADMIN] },
 ];
 
 // O caminho é o próprio prefixo ou fica "dentro" dele (ex.: /admin/espacos dentro de /admin).

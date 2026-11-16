@@ -14,10 +14,11 @@ vi.mock('@/repositories/espacosRepository', () => ({
   existeNome: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
+  removeSemReservas: vi.fn(),
 }));
 
 const repo = await import('@/repositories/espacosRepository');
-const { criar, editar, listar } = await import('@/services/espacosService');
+const { criar, editar, excluir, listar } = await import('@/services/espacosService');
 const { espacoSchema } = await import('@/lib/validators');
 
 const sindico = { perfil: 'SINDICO', condominioId: '1' };
@@ -74,5 +75,38 @@ describe('espacosService (RF.09)', () => {
   it('morador não gerencia espaços', async () => {
     await expect(listar(morador)).rejects.toMatchObject({ status: 403 });
     await expect(criar(morador, dados)).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+describe('excluir espaço (#62)', () => {
+  it('exclui espaço sem nenhuma reserva', async () => {
+    repo.findById.mockResolvedValue({ id: 4, nome: 'Piscina' });
+    repo.removeSemReservas.mockResolvedValue(true);
+    await expect(excluir(sindico, 4)).resolves.toBeUndefined();
+    expect(repo.removeSemReservas).toHaveBeenCalledWith(4, '1');
+  });
+
+  it('espaço com histórico de reservas não é excluído (409, orienta desativar)', async () => {
+    repo.findById.mockResolvedValue({ id: 4, nome: 'Piscina' });
+    repo.removeSemReservas.mockResolvedValue(false);
+    await expect(excluir(sindico, 4)).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/Desative/),
+    });
+  });
+
+  it('morador não exclui; espaço de outro condomínio dá 404', async () => {
+    await expect(excluir(morador, 4)).rejects.toMatchObject({ status: 403 });
+    repo.findById.mockResolvedValue(null);
+    await expect(excluir(sindico, 99)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('a lista informa se o espaço pode ser excluído', async () => {
+    repo.listTodos.mockResolvedValue([
+      { id: 1, nome: 'A', tem_reservas: true },
+      { id: 2, nome: 'B', tem_reservas: false },
+    ]);
+    const lista = await listar(sindico);
+    expect(lista.map((e) => e.podeExcluir)).toEqual([false, true]);
   });
 });

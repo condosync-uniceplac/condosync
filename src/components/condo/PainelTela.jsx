@@ -145,10 +145,17 @@ export default function Painel() {
         <Button className="rounded-xl" onClick={() => router.push('/chamados')}>
           <ClipboardList className="h-4 w-4" /> Registrar Ocorrência
         </Button>
-        <Button className="rounded-xl" onClick={() => router.push('/enquetes')}>
-          <Vote className="h-4 w-4" />{' '}
-          {perfil === 'sindico' ? 'Nova Enquete' : podeVotar ? 'Votar em Enquetes' : 'Ver Enquetes'}
-        </Button>
+        {/* A portaria não participa das enquetes (só moradores votam). */}
+        {perfil !== 'portaria' && (
+          <Button className="rounded-xl" onClick={() => router.push('/enquetes')}>
+            <Vote className="h-4 w-4" />{' '}
+            {perfil === 'sindico'
+              ? 'Nova Enquete'
+              : podeVotar
+                ? 'Votar em Enquetes'
+                : 'Ver Enquetes'}
+          </Button>
+        )}
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.6fr_1fr]">
@@ -204,45 +211,47 @@ export default function Painel() {
         </section>
 
         <div className="space-y-5">
-          <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">Votações abertas</h2>
-              <button
-                onClick={() => router.push('/enquetes')}
-                className="text-sm font-semibold text-primary hover:underline"
-              >
-                Ver todas
-              </button>
-            </div>
-            <div className="mt-4 space-y-3">
-              {enquetesAbertas.length === 0 && (
-                <p className="text-xs text-muted-foreground">Nenhuma votação aberta.</p>
-              )}
-              {enquetesAbertas.slice(0, 3).map((e) => (
-                <div key={e.id} className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="line-clamp-2 text-sm font-semibold text-foreground">
-                      {e.pergunta}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      até {formatarData(dataLocal(e.encerraEm))} · {e.total}{' '}
-                      {e.total === 1 ? 'voto' : 'votos'}
-                    </p>
+          {perfil !== 'portaria' && (
+            <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-foreground">Votações abertas</h2>
+                <button
+                  onClick={() => router.push('/enquetes')}
+                  className="text-sm font-semibold text-primary hover:underline"
+                >
+                  Ver todas
+                </button>
+              </div>
+              <div className="mt-4 space-y-3">
+                {enquetesAbertas.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhuma votação aberta.</p>
+                )}
+                {enquetesAbertas.slice(0, 3).map((e) => (
+                  <div key={e.id} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                        {e.pergunta}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        até {formatarData(dataLocal(e.encerraEm))} · {e.total}{' '}
+                        {e.total === 1 ? 'voto' : 'votos'}
+                      </p>
+                    </div>
+                    {podeVotar &&
+                      (e.meuVoto ? (
+                        <Badge className="shrink-0 rounded-full border-0 bg-success/10 text-success">
+                          Votou
+                        </Badge>
+                      ) : (
+                        <Badge className="shrink-0 rounded-full border-0 bg-warning/15 text-warning-foreground">
+                          Falta votar
+                        </Badge>
+                      ))}
                   </div>
-                  {podeVotar &&
-                    (e.meuVoto ? (
-                      <Badge className="shrink-0 rounded-full border-0 bg-success/10 text-success">
-                        Votou
-                      </Badge>
-                    ) : (
-                      <Badge className="shrink-0 rounded-full border-0 bg-warning/15 text-warning-foreground">
-                        Falta votar
-                      </Badge>
-                    ))}
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
             <h2 className="text-base font-bold text-foreground">Agenda dos espaços</h2>

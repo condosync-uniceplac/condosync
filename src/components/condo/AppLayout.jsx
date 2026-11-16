@@ -64,6 +64,7 @@ export function AppLayout({ titulo, subtitulo, children }) {
     if (perfil === 'admin') return item.url === '/admin';
     if (item.url === '/portaria') return perfil !== 'morador';
     if (item.url === '/visitantes') return perfil === 'morador';
+    if (item.url === '/enquetes') return perfil !== 'portaria'; // portaria não vota
     if (item.url === '/admin') return perfil === 'sindico';
     return true;
   });
@@ -162,7 +163,7 @@ export function AppLayout({ titulo, subtitulo, children }) {
                   <p className="text-xs font-normal text-muted-foreground">{usuario.email}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="gap-2">
+                <DropdownMenuItem className="gap-2" onClick={() => router.push('/perfil')}>
                   <UserCircle2 className="h-4 w-4" /> Meu perfil
                 </DropdownMenuItem>
                 <DropdownMenuItem

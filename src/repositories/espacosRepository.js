@@ -15,7 +15,8 @@ export async function listTodos(condominioId, db = pool) {
     `SELECT e.id, e.nome, e.descricao, e.capacidade_pessoas, e.valor, e.ativo,
             (SELECT count(*) FROM reservas r
               WHERE r.espaco_id = e.id AND r.status IN ('PENDENTE', 'CONFIRMADA') AND r.fim > now()
-            )::int AS reservas_futuras
+            )::int AS reservas_futuras,
+            EXISTS (SELECT 1 FROM reservas r WHERE r.espaco_id = e.id) AS tem_reservas
        FROM espacos e
       WHERE e.condominio_id = $1
       ORDER BY e.ativo DESC, e.nome`,
@@ -62,4 +63,18 @@ export async function update(id, e, db = pool) {
       WHERE id = $1`,
     [id, e.nome, e.descricao ?? null, e.capacidade, e.valor, e.ativo],
   );
+}
+
+/**
+ * Apaga o espaço só se ele nunca teve reserva (nem cancelada).
+ * Devolve false se havia reservas — nesse caso o espaço deve ser desativado.
+ */
+export async function removeSemReservas(id, condominioId, db = pool) {
+  const { rowCount } = await db.query(
+    `DELETE FROM espacos e
+      WHERE e.id = $1 AND e.condominio_id = $2
+        AND NOT EXISTS (SELECT 1 FROM reservas r WHERE r.espaco_id = e.id)`,
+    [id, condominioId],
+  );
+  return rowCount > 0;
 }

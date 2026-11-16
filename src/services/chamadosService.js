@@ -10,13 +10,13 @@ import { nomeSeguro, validarAnexo } from '@/lib/anexos';
 import * as chamadosRepo from '@/repositories/chamadosRepository';
 
 /*
- * RN.22 (versão 2) / bug #18 — chamados e ocorrências.
+ * RN.22 (versão 2, revisada em 16/11: a portaria também resolve) / bug #18 — chamados e ocorrências.
  *
  * | Ação                                   | Morador        | Portaria | Síndico |
  * | Abrir chamado e acompanhar             | os próprios    | sim      | sim     |
  * | Mover de Aberto para Em análise        | não            | sim      | sim     |
  * | Registrar comentário de acompanhamento | não            | sim      | sim     |
- * | Marcar como Resolvido                  | não            | não      | sim     |
+ * | Marcar como Resolvido                  | não            | sim      | sim     |
  * | Reabrir (voltar para Aberto/Em análise)| não            | não      | sim     |
  *
  * O administrador tem os mesmos poderes do síndico. Toda troca de status e todo
@@ -30,7 +30,9 @@ const ROTULO = { ABERTO: 'Aberto', EM_ANALISE: 'Em análise', RESOLVIDO: 'Resolv
 /** Para quais status o perfil pode mover um chamado que está em `atual`. */
 export function transicoesPermitidas(perfil, atual) {
   if (GESTAO.includes(perfil)) return STATUS.filter((s) => s !== atual);
-  if (perfil === 'PORTARIA' && atual === 'ABERTO') return ['EM_ANALISE'];
+  // Portaria: coloca em análise e resolve; reabrir um resolvido fica com o síndico.
+  if (perfil === 'PORTARIA' && atual === 'ABERTO') return ['EM_ANALISE', 'RESOLVIDO'];
+  if (perfil === 'PORTARIA' && atual === 'EM_ANALISE') return ['RESOLVIDO'];
   return [];
 }
 
@@ -176,8 +178,7 @@ export async function alterarStatus(session, id, { status, comentario }) {
 // Mensagem de erro específica para cada caso proibido.
 function mensagemSemPermissao(perfil, status) {
   if (perfil === 'MORADOR') return 'Somente a administração do condomínio altera o status.';
-  if (status === 'RESOLVIDO') return 'Apenas o síndico pode marcar o chamado como resolvido.';
-  if (perfil === 'PORTARIA') return 'A portaria só pode mover chamados de Aberto para Em análise.';
+  if (perfil === 'PORTARIA') return 'Apenas o síndico pode reabrir um chamado resolvido.';
   return 'Você não pode alterar o status deste chamado.';
 }
 

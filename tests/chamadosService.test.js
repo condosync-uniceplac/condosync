@@ -51,8 +51,8 @@ describe('tabela de transições (RN.22 / bug #18)', () => {
     ['MORADOR', 'ABERTO', []],
     ['MORADOR', 'EM_ANALISE', []],
     ['MORADOR', 'RESOLVIDO', []],
-    ['PORTARIA', 'ABERTO', ['EM_ANALISE']],
-    ['PORTARIA', 'EM_ANALISE', []],
+    ['PORTARIA', 'ABERTO', ['EM_ANALISE', 'RESOLVIDO']],
+    ['PORTARIA', 'EM_ANALISE', ['RESOLVIDO']],
     ['PORTARIA', 'RESOLVIDO', []],
     ['SINDICO', 'ABERTO', ['EM_ANALISE', 'RESOLVIDO']],
     ['SINDICO', 'EM_ANALISE', ['ABERTO', 'RESOLVIDO']],
@@ -143,15 +143,19 @@ describe('chamadosService', () => {
     );
   });
 
-  it('portaria não resolve nem reabre', async () => {
+  it('portaria resolve (RN.22 revisada), mas não reabre nem volta para Aberto', async () => {
     comStatus('EM_ANALISE');
-    await expect(svc.alterarStatus(portaria, 7, { status: 'RESOLVIDO' })).rejects.toMatchObject({
-      status: 403,
-      message: expect.stringMatching(/síndico/),
-    });
-    comStatus('RESOLVIDO');
+    await svc.alterarStatus(portaria, 7, { status: 'RESOLVIDO', comentario: 'Lâmpada trocada' });
+    expect(repo.updateStatus).toHaveBeenCalledWith(7, 'RESOLVIDO', 'tx');
+    vi.clearAllMocks();
+    comStatus('EM_ANALISE');
     await expect(svc.alterarStatus(portaria, 7, { status: 'ABERTO' })).rejects.toMatchObject({
       status: 403,
+    });
+    comStatus('RESOLVIDO');
+    await expect(svc.alterarStatus(portaria, 7, { status: 'EM_ANALISE' })).rejects.toMatchObject({
+      status: 403,
+      message: expect.stringMatching(/síndico/),
     });
     expect(repo.updateStatus).not.toHaveBeenCalled();
   });

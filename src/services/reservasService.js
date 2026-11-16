@@ -6,6 +6,7 @@
 
 import { withTransaction } from '@/lib/db';
 import { AppError } from '@/lib/errors';
+import { formatTelefone } from '@/lib/masks';
 import { ANTECEDENCIA_CANCELAMENTO_HORAS, intervaloDoTurno } from '@/lib/turnos';
 import * as reservasRepo from '@/repositories/reservasRepository';
 
@@ -40,6 +41,8 @@ function paraTela(r, session) {
     convidados: r.convidados,
     valor: Number(r.valor_cobrado),
     responsavel: r.responsavel,
+    // Telefone de quem reservou: só para portaria/síndico/admin entrarem em contato.
+    telefone: VEEM_TODAS.includes(session.perfil) ? formatTelefone(r.responsavel_telefone) : null,
     unidade: unidadeTexto(r),
     minha: String(r.vinculo_id) === String(session.vinculoId),
   };
