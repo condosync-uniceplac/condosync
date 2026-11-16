@@ -125,107 +125,117 @@ export default function PerfilTela() {
             </div>
           )}
 
-          <div className="mt-5 border-t border-border pt-4">
-            <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <Phone className="h-4 w-4 text-primary" /> Telefone de contato
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              A portaria e o síndico usam este número para falar com você (ex.: sobre uma reserva).
+          {perfil?.demo ? (
+            <p className="mt-5 rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs text-foreground">
+              Conta de demonstração: o perfil fica só para leitura.
             </p>
-            <div className="mt-3 flex items-start gap-2">
+          ) : (
+            <div className="mt-5 border-t border-border pt-4">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Phone className="h-4 w-4 text-primary" /> Telefone de contato
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                A portaria e o síndico usam este número para falar com você (ex.: sobre uma
+                reserva).
+              </p>
+              <div className="mt-3 flex items-start gap-2">
+                <Campo
+                  id="perfil-telefone"
+                  label="Telefone"
+                  obrigatorio
+                  erro={errosTel.telefone}
+                  className="flex-1"
+                >
+                  <Input
+                    id="perfil-telefone"
+                    inputMode="numeric"
+                    value={tel.telefone}
+                    onChange={(e) => setTel({ telefone: formatTelefone(e.target.value) })}
+                    placeholder="(61) 90000-0000"
+                    className="h-11 rounded-xl"
+                  />
+                </Campo>
+                <Button
+                  className="mt-6 h-11 rounded-xl"
+                  onClick={salvarTelefone}
+                  disabled={salvandoTel || !perfil || tel.telefone === perfil.telefone}
+                >
+                  {salvandoTel && <Loader2 className="h-4 w-4 animate-spin" />} Salvar
+                </Button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {!perfil?.demo && (
+          <section className="h-fit rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
+              <KeyRound className="h-5 w-5 text-primary" /> Trocar senha
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Depois da troca, os outros computadores e celulares conectados precisam entrar de
+              novo.
+            </p>
+            <div className="mt-4 space-y-3">
+              <LegendaObrigatorio />
+              <Campo id="senha-atual" label="Senha atual" obrigatorio erro={errosSenha.senhaAtual}>
+                <Input
+                  id="senha-atual"
+                  type="password"
+                  autoComplete="current-password"
+                  value={senha.senhaAtual}
+                  onChange={(e) => setSenha({ ...senha, senhaAtual: e.target.value })}
+                  className="h-11 rounded-xl"
+                />
+              </Campo>
+              <Campo id="senha-nova" label="Nova senha" obrigatorio erro={errosSenha.novaSenha}>
+                <Input
+                  id="senha-nova"
+                  type="password"
+                  autoComplete="new-password"
+                  value={senha.novaSenha}
+                  onChange={(e) => setSenha({ ...senha, novaSenha: e.target.value })}
+                  className="h-11 rounded-xl"
+                />
+                <ul className="grid gap-0.5 pt-1 sm:grid-cols-2">
+                  {criterios.map((c) => (
+                    <li
+                      key={c.id}
+                      className={cn(
+                        'flex items-center gap-1 text-xs',
+                        c.ok ? 'text-success' : 'text-muted-foreground',
+                      )}
+                    >
+                      {c.ok ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} {c.texto}
+                    </li>
+                  ))}
+                </ul>
+              </Campo>
               <Campo
-                id="perfil-telefone"
-                label="Telefone"
+                id="senha-confirmacao"
+                label="Confirme a nova senha"
                 obrigatorio
-                erro={errosTel.telefone}
-                className="flex-1"
+                erro={errosSenha.confirmacao}
               >
                 <Input
-                  id="perfil-telefone"
-                  inputMode="numeric"
-                  value={tel.telefone}
-                  onChange={(e) => setTel({ telefone: formatTelefone(e.target.value) })}
-                  placeholder="(61) 90000-0000"
+                  id="senha-confirmacao"
+                  type="password"
+                  autoComplete="new-password"
+                  value={senha.confirmacao}
+                  onChange={(e) => setSenha({ ...senha, confirmacao: e.target.value })}
                   className="h-11 rounded-xl"
                 />
               </Campo>
               <Button
-                className="mt-6 h-11 rounded-xl"
-                onClick={salvarTelefone}
-                disabled={salvandoTel || !perfil || tel.telefone === perfil.telefone}
+                className="mt-2 h-11 w-full rounded-xl"
+                onClick={trocarSenha}
+                disabled={salvandoSenha}
               >
-                {salvandoTel && <Loader2 className="h-4 w-4 animate-spin" />} Salvar
+                {salvandoSenha && <Loader2 className="h-4 w-4 animate-spin" />} Trocar senha
               </Button>
             </div>
-          </div>
-        </section>
-
-        <section className="h-fit rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-          <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
-            <KeyRound className="h-5 w-5 text-primary" /> Trocar senha
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Depois da troca, os outros computadores e celulares conectados precisam entrar de novo.
-          </p>
-          <div className="mt-4 space-y-3">
-            <LegendaObrigatorio />
-            <Campo id="senha-atual" label="Senha atual" obrigatorio erro={errosSenha.senhaAtual}>
-              <Input
-                id="senha-atual"
-                type="password"
-                autoComplete="current-password"
-                value={senha.senhaAtual}
-                onChange={(e) => setSenha({ ...senha, senhaAtual: e.target.value })}
-                className="h-11 rounded-xl"
-              />
-            </Campo>
-            <Campo id="senha-nova" label="Nova senha" obrigatorio erro={errosSenha.novaSenha}>
-              <Input
-                id="senha-nova"
-                type="password"
-                autoComplete="new-password"
-                value={senha.novaSenha}
-                onChange={(e) => setSenha({ ...senha, novaSenha: e.target.value })}
-                className="h-11 rounded-xl"
-              />
-              <ul className="grid gap-0.5 pt-1 sm:grid-cols-2">
-                {criterios.map((c) => (
-                  <li
-                    key={c.id}
-                    className={cn(
-                      'flex items-center gap-1 text-xs',
-                      c.ok ? 'text-success' : 'text-muted-foreground',
-                    )}
-                  >
-                    {c.ok ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} {c.texto}
-                  </li>
-                ))}
-              </ul>
-            </Campo>
-            <Campo
-              id="senha-confirmacao"
-              label="Confirme a nova senha"
-              obrigatorio
-              erro={errosSenha.confirmacao}
-            >
-              <Input
-                id="senha-confirmacao"
-                type="password"
-                autoComplete="new-password"
-                value={senha.confirmacao}
-                onChange={(e) => setSenha({ ...senha, confirmacao: e.target.value })}
-                className="h-11 rounded-xl"
-              />
-            </Campo>
-            <Button
-              className="mt-2 h-11 w-full rounded-xl"
-              onClick={trocarSenha}
-              disabled={salvandoSenha}
-            >
-              {salvandoSenha && <Loader2 className="h-4 w-4 animate-spin" />} Trocar senha
-            </Button>
-          </div>
-        </section>
+          </section>
+        )}
       </div>
     </AppLayout>
   );

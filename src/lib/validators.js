@@ -363,3 +363,19 @@ export const trocaSenhaSchema = z
     path: ['confirmacao'],
     message: 'As senhas não conferem.',
   });
+
+// Conta rápida de demonstração (QR code): código do link + nome curto, só letras e espaços
+// (o nome aparece na tela do apresentador, então nada de números, links ou símbolos).
+export const demoSchema = z.object({
+  codigo: z.string().max(200),
+  nome: z
+    .string({ error: 'Informe seu nome.' })
+    .transform((s) => s.trim().replace(/\s+/g, ' '))
+    .pipe(
+      z
+        .string()
+        .min(2, 'Informe seu nome.')
+        .max(30, 'Use no máximo 30 letras.')
+        .regex(/^\p{L}+(?: \p{L}+)*$/u, 'Use só letras e espaços.'),
+    ),
+});

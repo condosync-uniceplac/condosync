@@ -34,11 +34,20 @@ export async function obter(session) {
     perfil: PERFIL_LABEL[session.perfil] ?? session.perfil,
     condominio: session.condominioNome ?? null,
     unidade: unidade ? `Apto ${unidade.numero} - Bloco ${unidade.bloco}` : null,
+    demo: Boolean(session.demo),
   };
+}
+
+// Contas de demonstração (QR code) são compartilhadas com a plateia: perfil só para leitura.
+function bloquearDemo(session) {
+  if (session.demo) {
+    throw new AppError(403, 'Na conta de demonstração não é possível alterar o perfil.');
+  }
 }
 
 /** Atualiza o telefone de contato (a portaria usa para falar com quem reservou). */
 export async function atualizarTelefone(session, { telefone }) {
+  bloquearDemo(session);
   await usuariosRepo.atualizarTelefone(session.sub, telefone);
   return { telefone: formatTelefone(telefone) };
 }
@@ -49,6 +58,7 @@ export async function atualizarTelefone(session, { telefone }) {
  * Devolve a nova versão de sessão do vínculo em uso.
  */
 export async function trocarSenha(session, { senhaAtual, novaSenha }) {
+  bloquearDemo(session);
   const hashAtual = await usuariosRepo.findSenhaHash(session.sub);
   if (!hashAtual || !(await verifyPassword(senhaAtual, hashAtual))) {
     throw new AppError(422, 'Dados inválidos.', { senhaAtual: 'Senha atual incorreta.' });
