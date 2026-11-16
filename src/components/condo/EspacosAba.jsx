@@ -28,9 +28,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { enviarJson, lerResposta } from '@/lib/apiClient';
+import { formatMoeda, proximoValorMoeda } from '@/lib/masks';
 import { cn } from '@/lib/utils';
 
 // Formulário vazio e formatação do valor em reais.
+// `valor` fica em centavos (texto): o campo de taxa funciona como o do Pix.
 const vazio = { nome: '', descricao: '', capacidade: '20', valor: '0', ativo: true };
 const taxa = (v) =>
   v > 0 ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Isento';
@@ -46,8 +48,13 @@ const MODELOS_ESPACO = [
   { rotulo: 'Brinquedoteca', valor: { nome: 'Brinquedoteca', capacidade: '15' } },
 ];
 
-// Valores de taxa mais usados.
-const TAXAS = ['0', '50', '100', '150'];
+// Valores de taxa mais usados (em centavos).
+const TAXAS = [
+  { rotulo: 'Isento', valor: '0' },
+  { rotulo: 'R$ 50', valor: '5000' },
+  { rotulo: 'R$ 100', valor: '10000' },
+  { rotulo: 'R$ 150', valor: '15000' },
+];
 
 export function EspacosAba() {
   // Estado: lista de espaços e formulário aberto (novo ou edição).
@@ -82,7 +89,7 @@ export function EspacosAba() {
             nome: e.nome,
             descricao: e.descricao,
             capacidade: String(e.capacidade),
-            valor: String(e.valor),
+            valor: String(Math.round(Number(e.valor) * 100)),
             ativo: e.ativo,
           }
         : vazio,
@@ -103,7 +110,7 @@ export function EspacosAba() {
       nome: form.nome,
       descricao: form.descricao || undefined,
       capacidade: form.capacidade,
-      valor: String(form.valor).replace(',', '.'),
+      valor: (Number(form.valor) / 100).toFixed(2), // centavos -> reais com 2 casas
       ativo: form.ativo,
     };
     try {
@@ -227,18 +234,32 @@ export function EspacosAba() {
                   onChange={(v) => setForm({ ...form, capacidade: v })}
                 />
               </Campo>
-              <Campo id="e-valor" label="Taxa (R$, 0 = isento)" obrigatorio erro={erros.valor}>
+              <Campo
+                id="e-valor"
+                label="Taxa (0 = isento)"
+                obrigatorio
+                erro={erros.valor}
+                dica="Digite só os números: os centavos se ajustam sozinhos."
+              >
                 <Input
                   id="e-valor"
-                  inputMode="decimal"
-                  value={form.valor}
-                  onChange={set('valor')}
-                  className="h-11 rounded-xl"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={formatMoeda(form.valor)}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      valor: String(
+                        proximoValorMoeda(form.valor, formatMoeda(form.valor), e.target.value),
+                      ),
+                    })
+                  }
+                  className="h-11 rounded-xl text-right font-semibold tabular-nums"
                 />
                 <Sugestoes
-                  rotulo="R$"
+                  rotulo="Atalhos:"
                   itens={TAXAS}
-                  ativo={String(form.valor)}
+                  ativo={TAXAS.find((t) => t.valor === String(form.valor))?.rotulo}
                   onEscolher={(v) => setForm({ ...form, valor: v })}
                 />
               </Campo>
