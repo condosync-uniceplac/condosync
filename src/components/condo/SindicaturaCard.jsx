@@ -119,7 +119,7 @@ export function SindicaturaCard() {
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {ehAdmin
-          ? 'Escolha o morador eleito. Quem deixa a função volta a ser morador da sua unidade.'
+          ? 'Escolha o morador eleito.'
           : 'Ao fim do mandato, transfira a função para o morador eleito.'}
       </p>
 
