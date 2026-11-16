@@ -130,8 +130,7 @@ export default function AprovacoesTela() {
               )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Novos moradores só acessam o CondoSync depois da aprovação. Confira a unidade
-              informada e corrija se o morador escolheu o bloco ou o apartamento errado.
+              Novos moradores só acessam o CondoSync depois da aprovação.
             </p>
 
             {erro && (
