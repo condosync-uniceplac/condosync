@@ -177,7 +177,7 @@ export default function AprovacoesTela() {
                               [c.id]: Number(e.target.value),
                             })
                           }
-                          className={`${SELECT_CLASSE.replace('w-full', '')} h-9 w-56`}
+                          className={`${SELECT_CLASSE.replace('w-full', '')} h-9 w-full sm:w-64`}
                         >
                           {unidades.length === 0 && c.unidade && (
                             <option value={c.unidadeId}>{c.unidade}</option>

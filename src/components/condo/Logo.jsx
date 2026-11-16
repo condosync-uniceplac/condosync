@@ -34,7 +34,8 @@ export function LogoMarca({ className }) {
     </svg>
   );
 }
-export function LogoCondoSync({ className, tom = 'escuro', tamanho = 'md' }) {
+// compacto: esconde o slogan em telas pequenas (cabeçalho do painel no celular).
+export function LogoCondoSync({ className, tom = 'escuro', tamanho = 'md', compacto = false }) {
   return (
     <div className={cn('flex items-center gap-3', className)}>
       <LogoMarca
@@ -58,6 +59,7 @@ export function LogoCondoSync({ className, tom = 'escuro', tamanho = 'md' }) {
             'text-[9px] font-semibold uppercase tracking-[0.16em]',
             tom === 'claro' ? 'text-sidebar-foreground/60' : 'text-muted-foreground',
             tamanho === 'lg' && 'text-[10px]',
+            compacto && 'hidden sm:block',
           )}
         >
           Gestão inteligente para condomínios

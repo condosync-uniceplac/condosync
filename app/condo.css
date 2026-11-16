@@ -164,26 +164,30 @@ body:has(.condo-app) {
 }
 
 /*
- * Campos de data/hora no celular (principalmente iPhone/Safari): o navegador ignora a largura
- * do campo e ele "vaza" para fora do card. Aqui forçamos o campo a ocupar só a largura disponível,
- * com o texto alinhado à esquerda como nos outros campos.
+ * Campos de data/hora no celular (iPhone/Safari): o Safari dá a esses campos uma largura mínima
+ * própria e eles "vazam" para fora do card; vazios, ainda aparecem em branco. Esta regra fica FORA
+ * das camadas do Tailwind de propósito, para valer mesmo sobre as classes do componente Input.
  */
-@layer base {
-  input[type='date'],
-  input[type='datetime-local'],
-  input[type='time'] {
-    -webkit-appearance: none;
-    appearance: none;
-    display: block;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    text-align: left;
-  }
-  input[type='date']::-webkit-date-and-time-value,
-  input[type='datetime-local']::-webkit-date-and-time-value,
-  input[type='time']::-webkit-date-and-time-value {
-    text-align: left;
-    min-height: 1.5em;
-  }
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+  line-height: 1.5;
+}
+input[type='date']::-webkit-date-and-time-value,
+input[type='datetime-local']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+  margin: 0;
+}
+input[type='date']::-webkit-datetime-edit,
+input[type='datetime-local']::-webkit-datetime-edit {
+  padding: 0;
 }

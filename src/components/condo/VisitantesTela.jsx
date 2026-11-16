@@ -193,9 +193,10 @@ export default function Visitantes() {
             {demais.map((v) => (
               <div
                 key={v.id}
-                className="flex flex-wrap items-center gap-4 rounded-xl border border-border p-4"
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-4 sm:gap-4"
               >
-                <div className="min-w-0 flex-1">
+                {/* No celular, os dados ocupam a linha toda e situação/botão descem para baixo. */}
+                <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                   <p className="text-sm font-bold text-foreground">{v.nome}</p>
                   <p className="text-xs text-muted-foreground">
                     {v.documento} · previsto para {formatarDataHora(v.previsao)}
