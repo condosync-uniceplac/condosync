@@ -53,7 +53,14 @@ export default function EsqueciSenhaForm() {
       )}
       <div className={styles.field}>
         <label htmlFor="email">E-mail cadastrado</label>
-        <input id="email" name="email" type="email" autoComplete="email" required />
+        <input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="seu@email.com"
+          autoComplete="email"
+          required
+        />
       </div>
       <button className={styles.button} type="submit" disabled={enviando}>
         {enviando ? 'Enviando...' : 'Enviar link de redefinição'}

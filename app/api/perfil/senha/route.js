@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { SESSION_COOKIE, sessionCookieOptions, signSession } from '@/lib/auth';
+import { SESSION_COOKIE, cookieDaSessao, signSession } from '@/lib/auth';
 import { handleError, parseWith, readJson } from '@/lib/http';
 import { requireSession } from '@/lib/session';
 import { trocaSenhaSchema } from '@/lib/validators';
@@ -22,7 +22,7 @@ export async function POST(request) {
     const { iat, exp, ...payload } = session;
     const token = await signSession({ ...payload, sv });
     const response = NextResponse.json({ ok: true });
-    response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+    response.cookies.set(SESSION_COOKIE, token, cookieDaSessao(session.lb));
     return response;
   } catch (err) {
     return handleError(err, 'perfil/senha');

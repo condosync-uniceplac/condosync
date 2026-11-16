@@ -12,6 +12,13 @@ import { SignJWT, jwtVerify } from 'jose';
 // Nome do cookie e duração da sessão (depois disso a pessoa precisa entrar de novo).
 export const SESSION_COOKIE = 'condosync_session';
 export const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 horas
+// Com "Lembrar de mim" marcado (RF.06), a sessão dura 30 dias.
+export const SESSION_TTL_LEMBRAR_SECONDS = 60 * 60 * 24 * 30;
+
+/** Duração do token: 30 dias se a pessoa pediu para ser lembrada (lb), senão 8 horas. */
+export function duracaoSessao(lembrar) {
+  return lembrar ? SESSION_TTL_LEMBRAR_SECONDS : SESSION_TTL_SECONDS;
+}
 
 // Chave secreta usada para assinar o token; vem da variável de ambiente JWT_SECRET.
 function secretKey() {
@@ -27,7 +34,7 @@ export async function signSession(payload) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
+    .setExpirationTime(`${duracaoSessao(payload.lb)}s`)
     .setSubject(String(payload.sub))
     .sign(secretKey());
 }
@@ -45,12 +52,18 @@ export async function verifySession(token) {
 
 // Opções do cookie: httpOnly (o JavaScript da página não lê), secure em produção (só HTTPS)
 // e sameSite=lax (não é enviado em requisições vindas de outros sites).
-export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {
+// maxAge undefined = cookie de sessão do navegador (some ao fechar o navegador); 0 = apagar.
+export function sessionCookieOptions(maxAge) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge,
+    ...(maxAge === undefined ? {} : { maxAge }),
   };
+}
+
+/** Cookie do login: dura 30 dias com "Lembrar de mim"; sem ele, termina ao fechar o navegador. */
+export function cookieDaSessao(lembrar) {
+  return sessionCookieOptions(lembrar ? SESSION_TTL_LEMBRAR_SECONDS : undefined);
 }
