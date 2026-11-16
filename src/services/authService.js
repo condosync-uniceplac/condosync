@@ -97,7 +97,7 @@ export async function register(data, { ip } = {}) {
  * Após MAX_TENTATIVAS falhas na janela de tempo, o identificador fica bloqueado
  * temporariamente (mesma resposta exista ou não a conta).
  */
-export async function login({ tipo, valor, senha }, { ip } = {}) {
+export async function login({ tipo, valor, senha, lembrar = false }, { ip } = {}) {
   // Bloqueio por excesso de tentativas: conta as falhas recentes desse e-mail/CPF.
   const identificador = `${tipo}:${valor}`;
   const falhas = await tentativasRepo.contarFalhasRecentes(identificador, JANELA_TENTATIVAS_MIN);
@@ -142,9 +142,15 @@ export async function login({ tipo, valor, senha }, { ip } = {}) {
     condominioNome: vinculo.condominio_nome,
     unidadeId: vinculo.unidade_id ? String(vinculo.unidade_id) : null,
     sv: vinculo.sessao_versao ?? 0,
+    // lb = "lembrar de mim": define a duração do token (30 dias ou 8 horas).
+    ...(lembrar ? { lb: true } : {}),
   };
   const token = await signSession(sessao);
-  return { token, usuario: { id: sessao.sub, nome: sessao.nome, perfil: sessao.perfil } };
+  return {
+    token,
+    lembrar: Boolean(lembrar),
+    usuario: { id: sessao.sub, nome: sessao.nome, perfil: sessao.perfil },
+  };
 }
 
 /**

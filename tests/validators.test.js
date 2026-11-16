@@ -56,6 +56,7 @@ describe('loginSchema — e-mail ou CPF (versão 2)', () => {
       tipo: 'email',
       valor: 'morador@condosync.dev',
       senha: 'x',
+      lembrar: false,
     });
   });
 

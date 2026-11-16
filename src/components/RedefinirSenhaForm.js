@@ -75,7 +75,7 @@ export default function RedefinirSenhaForm() {
     return (
       <div className={styles.form}>
         <p className={styles.success}>Senha redefinida! Você já pode entrar com a nova senha.</p>
-        <Link className={styles.button} href="/login" style={{ textAlign: 'center' }}>
+        <Link className={styles.button} href="/login">
           Ir para o login
         </Link>
       </div>
@@ -93,7 +93,7 @@ export default function RedefinirSenhaForm() {
           Este link de redefinição é inválido ou expirou. Cada link vale por 1 hora e só pode ser
           usado uma vez.
         </p>
-        <Link className={styles.button} href="/esqueci-senha" style={{ textAlign: 'center' }}>
+        <Link className={styles.button} href="/esqueci-senha">
           Solicitar um novo link
         </Link>
       </div>

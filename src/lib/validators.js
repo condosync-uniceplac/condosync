@@ -99,14 +99,18 @@ export const loginSchema = z
       .min(1, 'Informe o e-mail ou CPF.')
       .max(254),
     senha: z.string().min(1, 'Informe a senha.').max(72),
+    // "Lembrar de mim" (RF.06): sessão de 30 dias em vez de terminar ao fechar o navegador.
+    lembrar: z.boolean().optional().default(false),
   })
   .transform((data, ctx) => {
     if (data.identificador.includes('@')) {
       const email = emailSchema.safeParse(data.identificador);
-      if (email.success) return { tipo: 'email', valor: email.data, senha: data.senha };
+      if (email.success)
+        return { tipo: 'email', valor: email.data, senha: data.senha, lembrar: data.lembrar };
     } else {
       const cpf = cpfSchema.safeParse(data.identificador);
-      if (cpf.success) return { tipo: 'cpf', valor: cpf.data, senha: data.senha };
+      if (cpf.success)
+        return { tipo: 'cpf', valor: cpf.data, senha: data.senha, lembrar: data.lembrar };
     }
     ctx.addIssue({
       code: 'custom',

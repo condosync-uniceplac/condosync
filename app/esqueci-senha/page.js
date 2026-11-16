@@ -3,23 +3,25 @@
  */
 
 import Link from 'next/link';
+import { AuthLayout } from '@/components/auth/AuthLayout';
 import EsqueciSenhaForm from '@/components/EsqueciSenhaForm';
-import styles from '@/components/AuthCard.module.css';
 
 // Título (e descrição) da aba do navegador.
 export const metadata = { title: 'Esqueci a senha | CondoSync' };
 
 export default function EsqueciSenhaPage() {
   return (
-    <main className={styles.wrapper}>
-      <section className={styles.card}>
-        <h1 className={styles.brand}>CondoSync</h1>
-        <p className={styles.subtitle}>Informe seu e-mail para receber o link de redefinição</p>
-        <EsqueciSenhaForm />
-        <p className={styles.footer}>
-          Lembrou a senha? <Link href="/login">Voltar ao login</Link>
-        </p>
-      </section>
-    </main>
+    <AuthLayout
+      titulo="Esqueceu a senha?"
+      subtitulo="Informe seu e-mail e enviaremos um link para criar uma nova senha."
+    >
+      <EsqueciSenhaForm />
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        Lembrou a senha?{' '}
+        <Link href="/login" className="font-semibold text-primary hover:underline">
+          Voltar ao login
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }
