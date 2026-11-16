@@ -152,7 +152,7 @@ export default function Visitantes() {
       ))}
 
       <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
-        <section className="h-fit rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+        <section className="h-fit min-w-0 rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
           <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
             <UserPlus className="h-4.5 w-4.5 text-primary" /> Pré-autorizar visitante
           </h2>
