@@ -25,6 +25,9 @@ const PUBLIC_PREFIXES = [
   '/api/auth/reset-password',
   '/api/auth/logout',
   '/api/condominios',
+  // Conta rápida de demonstração (QR code da apresentação); protegida pelo código secreto.
+  '/demo',
+  '/api/demo/entrar',
 ];
 
 /** Páginas só para quem NÃO está logado (logado é mandado ao painel). */
