@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useVisitas } from '@/lib/useVisitas';
+import { cn } from '@/lib/utils';
 
 // Formulário vazio do visitante não previsto.
 const vazio = {
@@ -105,7 +106,7 @@ export default function Portaria() {
         </p>
       )}
       <div className="grid gap-5 2xl:grid-cols-[380px_1fr]">
-        <section className="order-2 h-fit rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] 2xl:order-1">
+        <section className="order-2 h-fit min-w-0 rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] 2xl:order-1">
           <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
             <UserPlus className="h-4.5 w-4.5 text-primary" /> Visitante não previsto
           </h2>
@@ -137,7 +138,7 @@ export default function Portaria() {
           </div>
         </section>
 
-        <section className="order-1 rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] 2xl:order-2">
+        <section className="order-1 min-w-0 rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] 2xl:order-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-bold text-foreground">Movimentação em tempo real</h2>
             <div className="relative w-full sm:w-72">
@@ -150,7 +151,52 @@ export default function Portaria() {
               />
             </div>
           </div>
-          <div className="mt-4 overflow-x-auto">
+          {/* Celular: cada visita vira um cartão (a tabela não cabe na tela). */}
+          <div className="mt-4 space-y-3 md:hidden">
+            {!carregando && filtradas.length === 0 && (
+              <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                Nenhuma visita no momento.
+              </p>
+            )}
+            {filtradas.map((v) => (
+              <div key={v.id} className="space-y-3 rounded-xl border border-border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground">{v.nome}</p>
+                    <p className="text-xs text-muted-foreground">{v.documento}</p>
+                    {v.autorizacaoVia === 'PRE_AUTORIZACAO' && (
+                      <p className="text-xs font-semibold text-primary">Convite {v.convite}</p>
+                    )}
+                  </div>
+                  <VisitaStatus status={v.status} via={v.autorizacaoVia} />
+                </div>
+                <dl className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <dt className="text-muted-foreground">Unidade</dt>
+                    <dd className="font-medium text-foreground">{v.unidade}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Placa</dt>
+                    <dd className="font-medium text-foreground">{v.placa ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Previsão</dt>
+                    <dd className="font-medium text-foreground">{formatarDataHora(v.previsao)}</dd>
+                  </div>
+                </dl>
+                {v.entrada && (
+                  <p className="text-xs text-muted-foreground">
+                    Entrada {formatarDataHora(v.entrada).slice(-5)}
+                    {v.saida ? ` · Saída ${formatarDataHora(v.saida).slice(-5)}` : ''}
+                  </p>
+                )}
+                <AcoesVisita v={v} executar={executar} />
+              </div>
+            ))}
+          </div>
+
+          {/* Computador/tablet: tabela completa. */}
+          <div className="mt-4 hidden overflow-x-auto md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -197,49 +243,7 @@ export default function Portaria() {
                       <VisitaStatus status={v.status} via={v.autorizacaoVia} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {v.status === 'AGUARDANDO' && (
-                          <>
-                            <Button
-                              size="sm"
-                              className="rounded-lg"
-                              onClick={() => executar(v, 'AUTORIZAR')}
-                            >
-                              <PhoneCall className="h-3.5 w-3.5" /> Confirmado por interfone
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="rounded-lg"
-                              onClick={() => executar(v, 'RECUSAR')}
-                            >
-                              <X className="h-3.5 w-3.5" /> Recusar
-                            </Button>
-                          </>
-                        )}
-                        {v.status === 'AUTORIZADO' && (
-                          <Button
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() => executar(v, 'ENTRADA')}
-                          >
-                            <LogIn className="h-3.5 w-3.5" /> Entrada
-                          </Button>
-                        )}
-                        {v.status === 'PRESENTE' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-lg"
-                            onClick={() => executar(v, 'SAIDA')}
-                          >
-                            <LogOut className="h-3.5 w-3.5" /> Saída
-                          </Button>
-                        )}
-                        {['FINALIZADO', 'CANCELADO'].includes(v.status) && (
-                          <Check className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
+                      <AcoesVisita v={v} executar={executar} className="justify-end" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -249,5 +253,46 @@ export default function Portaria() {
         </section>
       </div>
     </AppLayout>
+  );
+}
+
+/** Botões de ação de uma visita, conforme a situação (usado na tabela e nos cartões do celular). */
+function AcoesVisita({ v, executar, className }) {
+  return (
+    <div className={cn('flex flex-wrap gap-2', className)}>
+      {v.status === 'AGUARDANDO' && (
+        <>
+          <Button size="sm" className="rounded-lg" onClick={() => executar(v, 'AUTORIZAR')}>
+            <PhoneCall className="h-3.5 w-3.5" /> Confirmado por interfone
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-lg"
+            onClick={() => executar(v, 'RECUSAR')}
+          >
+            <X className="h-3.5 w-3.5" /> Recusar
+          </Button>
+        </>
+      )}
+      {v.status === 'AUTORIZADO' && (
+        <Button size="sm" className="rounded-lg" onClick={() => executar(v, 'ENTRADA')}>
+          <LogIn className="h-3.5 w-3.5" /> Entrada
+        </Button>
+      )}
+      {v.status === 'PRESENTE' && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-lg"
+          onClick={() => executar(v, 'SAIDA')}
+        >
+          <LogOut className="h-3.5 w-3.5" /> Saída
+        </Button>
+      )}
+      {['FINALIZADO', 'CANCELADO'].includes(v.status) && (
+        <Check className="h-4 w-4 text-muted-foreground" />
+      )}
+    </div>
   );
 }

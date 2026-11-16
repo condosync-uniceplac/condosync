@@ -121,9 +121,9 @@ export function AppLayout({ titulo, subtitulo, children }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-border bg-card/90 backdrop-blur">
-          <div className="flex flex-wrap items-center gap-4 px-5 py-4">
-            <div className="lg:hidden">
-              <LogoCondoSync />
+          <div className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
+            <div className="min-w-0 flex-1 lg:hidden">
+              <LogoCondoSync compacto />
             </div>
             <div className="hidden min-w-0 flex-1 lg:block">
               <h1 className="truncate text-lg font-bold text-foreground">{titulo}</h1>
@@ -145,7 +145,7 @@ export function AppLayout({ titulo, subtitulo, children }) {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-xl border border-border px-3 py-1.5 text-left transition-colors hover:border-primary/50">
+                <button className="flex items-center gap-3 rounded-xl border border-border p-1 text-left transition-colors hover:border-primary/50 sm:px-3 sm:py-1.5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                     {usuario.iniciais}
                   </span>
@@ -194,7 +194,7 @@ export function AppLayout({ titulo, subtitulo, children }) {
           </nav>
         </header>
 
-        <main className="flex-1 px-5 py-6">
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-5 sm:py-6">
           <div className="mb-6 lg:hidden">
             <h1 className="text-lg font-bold text-foreground">{titulo}</h1>
             <p className="text-sm text-muted-foreground">{subtitulo}</p>
