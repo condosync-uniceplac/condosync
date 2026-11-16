@@ -64,3 +64,22 @@ export async function findSenhaHash(id, db = pool) {
   const { rows } = await db.query('SELECT senha_hash FROM usuarios WHERE id = $1', [id]);
   return rows[0]?.senha_hash ?? null;
 }
+
+/** Dados do próprio usuário para a página Meu perfil (sem a senha). */
+export async function findPerfil(id, db = pool) {
+  const { rows } = await db.query(
+    `SELECT id, nome_completo, email, telefone, cpf,
+            to_char(data_nascimento, 'YYYY-MM-DD') AS data_nascimento, criado_em
+       FROM usuarios WHERE id = $1`,
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
+/** Atualiza o telefone de contato. */
+export async function atualizarTelefone(id, telefone, db = pool) {
+  await db.query('UPDATE usuarios SET telefone = $2, atualizado_em = now() WHERE id = $1', [
+    id,
+    telefone,
+  ]);
+}

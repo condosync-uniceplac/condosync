@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { handleError, parseWith, readJson } from '@/lib/http';
 import { requireSession } from '@/lib/session';
 import { espacoSchema } from '@/lib/validators';
-import { GESTAO, editar } from '@/services/espacosService';
+import { GESTAO, editar, excluir } from '@/services/espacosService';
 
 // O :id da URL precisa ser um número inteiro positivo.
 const idSchema = z.coerce.number().int().positive();
@@ -24,6 +24,17 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     // Qualquer erro vira uma resposta JSON padronizada (ver handleError em src/lib/http.js).
+    return handleError(err, 'admin/espacos/[id]');
+  }
+}
+
+// DELETE /api/admin/espacos/:id — exclui espaço sem nenhuma reserva (cadastrado por engano)
+export async function DELETE(_request, { params }) {
+  try {
+    const session = await requireSession(GESTAO);
+    await excluir(session, parseWith(idSchema, (await params).id));
+    return NextResponse.json({ ok: true });
+  } catch (err) {
     return handleError(err, 'admin/espacos/[id]');
   }
 }

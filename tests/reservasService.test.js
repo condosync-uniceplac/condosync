@@ -179,4 +179,23 @@ describe('reservasService — listar', () => {
     expect(repo.listAtivas).toHaveBeenLastCalledWith('1', { vinculoId: null });
     expect((await listar(portaria)).podeReservar).toBe(false);
   });
+
+  it('portaria e síndico recebem o telefone de quem reservou; o morador não', async () => {
+    const linha = {
+      id: 1,
+      espaco_id: 2,
+      vinculo_id: '10',
+      inicio: '2026-11-20T11:00:00Z',
+      fim: '2026-11-20T15:00:00Z',
+      responsavel: 'Joao Silva',
+      responsavel_telefone: '61988887777',
+      unidade_numero: '101',
+      bloco_nome: 'A',
+      valor_cobrado: '0',
+    };
+    repo.listAtivas.mockResolvedValue([linha]);
+    expect((await listar(portaria)).reservas[0].telefone).toBe('(61) 98888-7777');
+    expect((await listar(sindico)).reservas[0].telefone).toBe('(61) 98888-7777');
+    expect((await listar(morador)).reservas[0].telefone).toBeNull();
+  });
 });

@@ -5,7 +5,7 @@
  * Componente React de tela (roda no navegador): busca os dados pela API e mostra/edita.
  */
 
-import { CalendarDays, Loader2, Pencil, Plus, Users } from 'lucide-react';
+import { CalendarDays, Loader2, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -97,6 +97,18 @@ export function EspacosAba() {
   };
 
   // Cria ou atualiza o espaço.
+  // Exclui espaço cadastrado por engano (só aparece para quem nunca teve reserva).
+  const excluir = async (e) => {
+    if (!window.confirm(`Excluir o espaço "${e.nome}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await lerResposta(await fetch(`/api/admin/espacos/${e.id}`, { method: 'DELETE' }));
+      toast.success('Espaço excluído.');
+      await carregar();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const salvar = async () => {
     // Confere os obrigatórios antes de enviar.
     const vazios = faltando(form, ['nome', 'capacidade', 'valor']);
@@ -178,14 +190,32 @@ export function EspacosAba() {
             <p className="mt-1 text-[11px] text-muted-foreground">
               {e.reservasFuturas} reserva(s) futura(s)
             </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-3 w-full rounded-lg"
-              onClick={() => abrir(e)}
-            >
-              <Pencil className="h-3.5 w-3.5" /> Editar
-            </Button>
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 rounded-lg"
+                onClick={() => abrir(e)}
+              >
+                <Pencil className="h-3.5 w-3.5" /> Editar
+              </Button>
+              {e.podeExcluir && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => excluir(e)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir
+                </Button>
+              )}
+            </div>
+            {!e.podeExcluir && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Tem histórico de reservas: para tirar das reservas, edite e desmarque
+                &quot;Disponível para reserva&quot;.
+              </p>
+            )}
           </article>
         ))}
       </div>

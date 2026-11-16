@@ -339,3 +339,23 @@ export const enqueteSchema = z.object({
 export const votoSchema = z.object({
   opcaoId: z.coerce.number({ error: 'Escolha uma opção.' }).int().positive('Escolha uma opção.'),
 });
+
+// Meu perfil — telefone de contato
+export const telefonePerfilSchema = z.object({
+  telefone: z.preprocess(
+    onlyDigits,
+    z.string().regex(/^\d{10,11}$/, 'Telefone deve ter DDD + número (10 ou 11 dígitos).'),
+  ),
+});
+
+// Meu perfil — troca de senha (a atual confirma que é a própria pessoa)
+export const trocaSenhaSchema = z
+  .object({
+    senhaAtual: z.string({ error: 'Informe a senha atual.' }).min(1, 'Informe a senha atual.'),
+    novaSenha: senhaForteSchema,
+    confirmacao: z.string({ error: 'Confirme a nova senha.' }),
+  })
+  .refine((v) => v.novaSenha === v.confirmacao, {
+    path: ['confirmacao'],
+    message: 'As senhas não conferem.',
+  });

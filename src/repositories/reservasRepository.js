@@ -83,7 +83,8 @@ export async function listAtivas(condominioId, { vinculoId } = {}, db = pool) {
   const { rows } = await db.query(
     `SELECT r.id, r.espaco_id, r.vinculo_id, r.inicio, r.fim, r.status, r.convidados,
             r.valor_cobrado, e.nome AS espaco_nome,
-            u.nome_completo AS responsavel, un.numero AS unidade_numero, b.nome AS bloco_nome
+            u.nome_completo AS responsavel, u.telefone AS responsavel_telefone,
+            un.numero AS unidade_numero, b.nome AS bloco_nome
        FROM reservas r
        JOIN espacos e ON e.id = r.espaco_id
        JOIN vinculos_condominio v ON v.id = r.vinculo_id

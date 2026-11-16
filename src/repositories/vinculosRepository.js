@@ -211,3 +211,16 @@ export async function listPortaria(condominioId, db = pool) {
   );
   return rows;
 }
+
+/**
+ * Derruba todas as sessões do usuário (ex.: troca de senha): aumenta a versão de sessão
+ * de todos os vínculos dele. Devolve a nova versão de cada vínculo.
+ */
+export async function derrubarSessoesDoUsuario(usuarioId, db = pool) {
+  const { rows } = await db.query(
+    `UPDATE vinculos_condominio SET sessao_versao = sessao_versao + 1
+      WHERE usuario_id = $1 RETURNING id, sessao_versao`,
+    [usuarioId],
+  );
+  return rows;
+}

@@ -219,7 +219,7 @@ export default function Chamados() {
         )}
         {perfil === 'PORTARIA' && (
           <p className="text-xs text-muted-foreground">
-            A portaria move chamados de Aberto para Em análise e registra acompanhamentos.
+            A portaria coloca chamados em análise, registra acompanhamentos e marca como resolvidos.
           </p>
         )}
       </div>
