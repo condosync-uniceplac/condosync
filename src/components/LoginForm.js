@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Formulário de login (e-mail ou CPF + senha), com mostrar/ocultar senha e "Lembrar de mim".
+ * Formulário de login (e-mail ou CPF + senha), com mostrar/ocultar senha.
  */
 
 import { Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
@@ -15,11 +15,10 @@ import { Label } from '@/components/ui/label';
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Estado da tela: erro, envio, senha visível e "lembrar de mim".
+  // Estado da tela: erro, envio e senha visível.
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [verSenha, setVerSenha] = useState(false);
-  const [lembrar, setLembrar] = useState(false);
 
   // Envia as credenciais; se der certo, vai para a página pedida (?next) ou para o painel.
   async function handleSubmit(event) {
@@ -34,7 +33,6 @@ export default function LoginForm() {
         body: JSON.stringify({
           identificador: form.get('identificador'),
           senha: form.get('senha'),
-          lembrar,
         }),
       });
       if (!res.ok) {
@@ -113,20 +111,6 @@ export default function LoginForm() {
             {verSenha ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
           </button>
         </div>
-      </div>
-      <div>
-        <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={lembrar}
-            onChange={(e) => setLembrar(e.target.checked)}
-            className="h-4 w-4 accent-[var(--primary)]"
-          />
-          Lembrar de mim por 30 dias
-        </label>
-        <p className="mt-1 pl-6.5 text-xs text-muted-foreground">
-          Não marque em computador compartilhado, como o da portaria.
-        </p>
       </div>
       <Button
         type="submit"
