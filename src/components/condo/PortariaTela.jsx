@@ -10,11 +10,11 @@ import { Check, LogIn, LogOut, PhoneCall, Search, UserPlus, X } from 'lucide-rea
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { Campo, LegendaObrigatorio, faltando, useErros } from '@/components/condo/campo';
 import { CamposVisitante, SELECT_CLASSE } from '@/components/condo/campos-visitante';
 import { VisitaStatus, formatarDataHora } from '@/components/condo/VisitaStatus';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -26,7 +26,14 @@ import {
 import { useVisitas } from '@/lib/useVisitas';
 
 // Formulário vazio do visitante não previsto.
-const vazio = { nome: '', tipoDocumento: 'CPF', documento: '', unidadeId: '', placa: '' };
+const vazio = {
+  visitanteId: '',
+  nome: '',
+  tipoDocumento: 'CPF',
+  documento: '',
+  unidadeId: '',
+  placa: '',
+};
 
 // Mensagem de sucesso de cada ação.
 const SUCESSO = {
@@ -42,15 +49,24 @@ export default function Portaria() {
   const [form, setForm] = useState(vazio);
   const [busca, setBusca] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [erros, setErros] = useErros(form);
 
   // Registra o visitante não previsto (fica aguardando o morador).
   const registrar = async () => {
+    // Confere os obrigatórios antes de enviar.
+    const vazios = faltando(form, ['nome', 'documento', 'unidadeId']);
+    setErros(vazios);
+    if (Object.keys(vazios).length) {
+      toast.error('Preencha os campos obrigatórios destacados.');
+      return;
+    }
     setEnviando(true);
     try {
       await criar(form);
       toast.success(`${form.nome} registrado. Aguardando a confirmação do morador.`);
       setForm(vazio);
     } catch (e) {
+      setErros(e.campos ?? {});
       toast.error(e.message);
     } finally {
       setEnviando(false);
@@ -98,9 +114,9 @@ export default function Portaria() {
             confirmar pelo app ou pelo interfone.
           </p>
           <div className="mt-4 space-y-3">
-            <CamposVisitante form={form} setForm={setForm} />
-            <div className="space-y-1.5">
-              <Label htmlFor="unidadeId">Unidade de destino</Label>
+            <LegendaObrigatorio />
+            <CamposVisitante form={form} setForm={setForm} erros={erros} />
+            <Campo id="unidadeId" label="Unidade de destino" obrigatorio erro={erros.unidadeId}>
               <select
                 id="unidadeId"
                 value={form.unidadeId}
@@ -114,7 +130,7 @@ export default function Portaria() {
                   </option>
                 ))}
               </select>
-            </div>
+            </Campo>
             <Button className="mt-2 h-11 w-full rounded-xl" onClick={registrar} disabled={enviando}>
               Registrar e aguardar morador
             </Button>

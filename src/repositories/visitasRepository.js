@@ -21,6 +21,42 @@ export async function upsertVisitante({ condominioId, nome, tipoDocumento, docum
   return rows[0].id;
 }
 
+/**
+ * Sugestões de visitantes já cadastrados cujo nome ou documento contém o termo.
+ * Com `unidadeId`, só os que já visitaram essa unidade (o morador não vê os visitantes dos outros).
+ * Traz a placa e a data da última visita para preencher o formulário.
+ */
+export async function buscarVisitantes(condominioId, { termo, unidadeId }, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.id, v.nome, v.tipo_documento, v.documento,
+            u.placa_veiculo, u.previsao_entrada AS ultima_visita
+       FROM visitantes v
+       JOIN LATERAL (
+         SELECT x.placa_veiculo, x.previsao_entrada FROM visitas x
+          WHERE x.visitante_id = v.id AND ($3::bigint IS NULL OR x.unidade_id = $3)
+          ORDER BY x.previsao_entrada DESC LIMIT 1
+       ) u ON true
+      WHERE v.condominio_id = $1
+        AND (v.nome ILIKE '%' || $2 || '%' OR v.documento ILIKE '%' || $2 || '%')
+      ORDER BY u.previsao_entrada DESC
+      LIMIT 8`,
+    [condominioId, termo, unidadeId ?? null],
+  );
+  return rows;
+}
+
+/** Visitante do condomínio; com `unidadeId`, só se já tiver visitado essa unidade. */
+export async function findVisitante(id, condominioId, { unidadeId } = {}, db = pool) {
+  const { rows } = await db.query(
+    `SELECT v.id FROM visitantes v
+      WHERE v.id = $1 AND v.condominio_id = $2
+        AND ($3::bigint IS NULL OR EXISTS
+              (SELECT 1 FROM visitas x WHERE x.visitante_id = v.id AND x.unidade_id = $3))`,
+    [id, condominioId, unidadeId ?? null],
+  );
+  return rows[0]?.id ?? null;
+}
+
 // Registra a visita com o status inicial e, se já vier autorizada, quem e como autorizou.
 export async function create(v, db = pool) {
   const { rows } = await db.query(

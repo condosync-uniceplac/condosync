@@ -8,9 +8,9 @@
 import { Loader2, Mail, ShieldCheck, UserMinus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Campo, LegendaObrigatorio, faltando, useErros } from '@/components/condo/campo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { enviarJson, lerResposta } from '@/lib/apiClient';
 import { formatCpf, formatTelefone } from '@/lib/masks';
 
@@ -24,6 +24,7 @@ export function PortariaAba() {
   const [form, setForm] = useState(vazio);
   const [enviando, setEnviando] = useState(false);
   const [linkManual, setLinkManual] = useState(null);
+  const [erros, setErros] = useErros(form);
 
   const carregar = useCallback(async () => {
     try {
@@ -45,6 +46,13 @@ export function PortariaAba() {
 
   // Cria a conta; se o e-mail falhar, mostra o link para repassar ao porteiro.
   const criar = async () => {
+    // Confere os obrigatórios antes de enviar.
+    const vazios = faltando(form, ['nome', 'email', 'cpf', 'telefone', 'dataNascimento']);
+    setErros(vazios);
+    if (Object.keys(vazios).length) {
+      toast.error('Preencha os campos obrigatórios destacados.');
+      return;
+    }
     setEnviando(true);
     try {
       const { conta } = await enviarJson('/api/admin/portaria', 'POST', form);
@@ -56,6 +64,7 @@ export function PortariaAba() {
       setForm(vazio);
       await carregar();
     } catch (e) {
+      setErros(e.campos ?? {});
       toast.error(e.message);
     } finally {
       setEnviando(false);
@@ -117,17 +126,16 @@ export function PortariaAba() {
           O porteiro recebe um e-mail para definir a senha (link válido por 48 horas).
         </p>
         <div className="mt-4 space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="p-nome">Nome completo</Label>
+          <LegendaObrigatorio />
+          <Campo id="p-nome" label="Nome completo" obrigatorio erro={erros.nome}>
             <Input
               id="p-nome"
               value={form.nome}
               onChange={set('nome')}
               className="h-11 rounded-xl"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="p-email">E-mail</Label>
+          </Campo>
+          <Campo id="p-email" label="E-mail" obrigatorio erro={erros.email}>
             <Input
               id="p-email"
               type="email"
@@ -135,10 +143,9 @@ export function PortariaAba() {
               onChange={set('email')}
               className="h-11 rounded-xl"
             />
-          </div>
+          </Campo>
           <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="p-cpf">CPF</Label>
+            <Campo id="p-cpf" label="CPF" obrigatorio erro={erros.cpf}>
               <Input
                 id="p-cpf"
                 inputMode="numeric"
@@ -147,9 +154,8 @@ export function PortariaAba() {
                 placeholder="000.000.000-00"
                 className="h-11 rounded-xl"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-telefone">Telefone</Label>
+            </Campo>
+            <Campo id="p-telefone" label="Telefone" obrigatorio erro={erros.telefone}>
               <Input
                 id="p-telefone"
                 inputMode="numeric"
@@ -158,10 +164,9 @@ export function PortariaAba() {
                 placeholder="(61) 90000-0000"
                 className="h-11 rounded-xl"
               />
-            </div>
+            </Campo>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="p-nasc">Data de nascimento</Label>
+          <Campo id="p-nasc" label="Data de nascimento" obrigatorio erro={erros.dataNascimento}>
             <Input
               id="p-nasc"
               type="date"
@@ -169,7 +174,7 @@ export function PortariaAba() {
               onChange={set('dataNascimento')}
               className="h-11 rounded-xl"
             />
-          </div>
+          </Campo>
           <Button className="mt-2 h-11 w-full rounded-xl" onClick={criar} disabled={enviando}>
             {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}{' '}
             Criar conta e enviar convite

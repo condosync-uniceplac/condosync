@@ -170,8 +170,16 @@ const visitanteBase = z
       .trim()
       .transform((v) => v.toUpperCase().replace(/[^0-9A-Z]/g, '')),
     placa: placaSchema,
+    // Visitante escolhido na lista de sugestões: o documento já está no banco.
+    visitanteId: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .or(z.literal('').transform(() => undefined)),
   })
   .superRefine((v, ctx) => {
+    if (v.visitanteId) return;
     if (v.tipoDocumento === 'CPF') {
       if (
         !/^\d{11}$/.test(v.documento) ||

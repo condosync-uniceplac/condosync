@@ -67,6 +67,25 @@
   outline-offset: 1px;
 }
 
+/* Asterisco de campo obrigatório e legenda */
+.obrigatorio {
+  margin-left: 2px;
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.legenda {
+  font-size: 0.8125rem;
+  color: var(--color-muted, #64748b);
+  margin: 0;
+}
+
+/* Campo com erro: borda vermelha */
+.fieldInvalid input,
+.fieldInvalid select {
+  border-color: var(--color-danger);
+}
+
 .fieldError {
   font-size: 0.8125rem;
   color: var(--color-danger);

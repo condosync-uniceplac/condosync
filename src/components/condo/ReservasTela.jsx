@@ -10,6 +10,14 @@ import { CalendarDays, CheckCircle2, Loader2, Trash2, Users } from 'lucide-react
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import {
+  Campo,
+  Contador,
+  LegendaObrigatorio,
+  MSG_OBRIGATORIO,
+  Sugestoes,
+  useErros,
+} from '@/components/condo/campo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +29,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ANTECEDENCIA_CANCELAMENTO_HORAS,
@@ -51,11 +58,26 @@ export default function Reservas() {
   const [data, setData] = useState('');
   const [turno, setTurno] = useState(TURNOS[0].id);
   const [convidados, setConvidados] = useState('10');
+  const [erros, setErros] = useErros({ data, turno, convidados });
   const [enviando, setEnviando] = useState(false);
   const hoje = dataLocal(new Date());
 
+  // Atalhos de data: hoje, amanhã e o próximo sábado e domingo.
+  const atalhosData = (() => {
+    const dia = (n) => dataLocal(new Date(Date.now() + n * 86_400_000));
+    const semana = new Date(`${hoje}T12:00:00-03:00`).getUTCDay(); // 0 = domingo
+    const ateSabado = (6 - semana + 7) % 7 || 7;
+    return [
+      { rotulo: 'Hoje', valor: hoje },
+      { rotulo: 'Amanhã', valor: dia(1) },
+      { rotulo: 'Sábado', valor: dia(ateSabado) },
+      { rotulo: 'Domingo', valor: dia(ateSabado + 1) },
+    ].filter((a, i, l) => l.findIndex((b) => b.valor === a.valor) === i);
+  })();
+
   // Abre o formulário de reserva do espaço escolhido.
   const abrir = (e) => {
+    setErros({});
     setEspaco(e);
     setData('');
     setTurno(TURNOS[0].id);
@@ -73,8 +95,13 @@ export default function Reservas() {
   // Envia a reserva.
   const confirmar = async () => {
     if (!espaco) return;
-    if (!data) {
-      toast.error('Escolha a data desejada para a reserva.');
+    // Confere os obrigatórios antes de enviar.
+    const vazios = {};
+    if (!data) vazios.data = MSG_OBRIGATORIO;
+    if (!convidados) vazios.convidados = MSG_OBRIGATORIO;
+    setErros(vazios);
+    if (Object.keys(vazios).length) {
+      toast.error('Preencha os campos obrigatórios destacados.');
       return;
     }
     if (indisponivel(turno)) {
@@ -87,6 +114,7 @@ export default function Reservas() {
       toast.success(`Reserva confirmada: ${espaco.nome} em ${formatarData(data)}`);
       setEspaco(null);
     } catch (e) {
+      setErros(e.campos ?? {});
       toast.error(e.message);
     } finally {
       setEnviando(false);
@@ -233,8 +261,8 @@ export default function Reservas() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="data">Data da reserva</Label>
+            <LegendaObrigatorio />
+            <Campo id="data" label="Data da reserva" obrigatorio erro={erros.data}>
               <Input
                 id="data"
                 type="date"
@@ -243,10 +271,15 @@ export default function Reservas() {
                 onChange={(ev) => setData(ev.target.value)}
                 className="h-11 rounded-xl"
               />
-            </div>
+              <Sugestoes
+                rotulo="Atalhos:"
+                itens={atalhosData}
+                ativo={atalhosData.find((a) => a.valor === data)?.rotulo}
+                onEscolher={setData}
+              />
+            </Campo>
 
-            <div className="space-y-2">
-              <Label>Turno / horário</Label>
+            <Campo id="turno" label="Turno / horário" obrigatorio erro={erros.turno}>
               <div className="grid gap-2 sm:grid-cols-2">
                 {TURNOS.map((t) => {
                   const ocupado = indisponivel(t.id);
@@ -272,23 +305,23 @@ export default function Reservas() {
                   );
                 })}
               </div>
-            </div>
+            </Campo>
 
-            <div className="space-y-2">
-              <Label htmlFor="convidados">Número de convidados</Label>
-              <Input
+            <Campo
+              id="convidados"
+              label="Número de convidados"
+              obrigatorio
+              erro={erros.convidados}
+              dica={`Máximo de ${espaco?.capacidade} pessoas neste espaço.`}
+            >
+              <Contador
                 id="convidados"
-                type="number"
                 min={1}
                 max={espaco?.capacidade}
-                value={convidados}
-                onChange={(ev) => setConvidados(ev.target.value)}
-                className="h-11 rounded-xl"
+                valor={convidados}
+                onChange={setConvidados}
               />
-              <p className="text-xs text-muted-foreground">
-                Máximo de {espaco?.capacidade} pessoas neste espaço.
-              </p>
-            </div>
+            </Campo>
           </div>
 
           <DialogFooter>

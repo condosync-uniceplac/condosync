@@ -16,6 +16,8 @@ vi.mock('@/repositories/visitasRepository', () => ({
   listDoCondominio: vi.fn(),
   findById: vi.fn(),
   transicionar: vi.fn(),
+  buscarVisitantes: vi.fn(),
+  findVisitante: vi.fn(),
 }));
 vi.mock('@/repositories/condominiosRepository', () => ({
   listUnidades: vi.fn(),
@@ -24,7 +26,7 @@ vi.mock('@/repositories/condominiosRepository', () => ({
 
 const repo = await import('@/repositories/visitasRepository');
 const condRepo = await import('@/repositories/condominiosRepository');
-const { executarAcao, listar, preAutorizar, registrarNaoPrevisto } =
+const { executarAcao, listar, preAutorizar, registrarNaoPrevisto, sugerirVisitantes } =
   await import('@/services/visitasService');
 const { mascararDocumento } = await import('@/lib/masks');
 const { preAutorizacaoSchema, visitaNaoPrevistaSchema } = await import('@/lib/validators');
@@ -174,5 +176,69 @@ describe('visitasService — RN.14', () => {
     expect(repo.listDaUnidade).toHaveBeenCalledWith('101');
     expect(r.visitas[0].documento).toBe('CPF 384.***.***-12');
     expect(r.visitas[0].placa).toBe('ABC-1234');
+  });
+});
+
+describe('sugestões de visitantes (menos digitação)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    repo.buscarVisitantes.mockResolvedValue([
+      {
+        id: 7,
+        nome: 'Aline Rodrigues',
+        tipo_documento: 'CPF',
+        documento: '52998224725',
+        placa_veiculo: 'ABC1234',
+        ultima_visita: '2026-11-01T13:00:00Z',
+      },
+    ]);
+    repo.create.mockResolvedValue({ id: 1, codigo_convite: 'abcdef1234' });
+  });
+
+  it('morador busca só entre quem já visitou a unidade dele; documento mascarado', async () => {
+    const lista = await sugerirVisitantes(morador, 'ali');
+    expect(repo.buscarVisitantes).toHaveBeenCalledWith('1', { termo: 'ali', unidadeId: '101' });
+    expect(lista[0]).toMatchObject({ id: 7, documento: '529.***.***-25', placa: 'ABC-1234' });
+  });
+
+  it('portaria busca no condomínio todo', async () => {
+    await sugerirVisitantes(portaria, 'ali');
+    expect(repo.buscarVisitantes).toHaveBeenCalledWith('1', { termo: 'ali', unidadeId: null });
+  });
+
+  it('não busca com menos de 2 letras e escapa curingas do ILIKE', async () => {
+    expect(await sugerirVisitantes(morador, 'a')).toEqual([]);
+    expect(repo.buscarVisitantes).not.toHaveBeenCalled();
+    await sugerirVisitantes(portaria, '50%_');
+    expect(repo.buscarVisitantes).toHaveBeenCalledWith('1', { termo: '50\\%\\_', unidadeId: null });
+  });
+
+  it('pré-autorização com visitante escolhido usa o cadastro existente', async () => {
+    repo.findVisitante.mockResolvedValue(7);
+    const dados = preAutorizacaoSchema.parse({
+      visitanteId: '7',
+      nome: 'Aline Rodrigues',
+      tipoDocumento: 'CPF',
+      documento: '529.***.***-25',
+      previsao: '2026-11-09T14:30',
+    });
+    await preAutorizar(morador, dados, agora);
+    expect(repo.findVisitante).toHaveBeenCalledWith(7, '1', { unidadeId: '101' });
+    expect(repo.upsertVisitante).not.toHaveBeenCalled();
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ visitanteId: 7 }));
+  });
+
+  it('recusa visitante que nunca visitou a unidade do morador', async () => {
+    repo.findVisitante.mockResolvedValue(null);
+    await expect(
+      preAutorizar(morador, { ...visitante, visitanteId: 99, previsao: '2026-11-09T14:30' }, agora),
+    ).rejects.toMatchObject({ status: 422, details: { nome: expect.any(String) } });
+  });
+
+  it('portaria pode usar qualquer visitante do condomínio', async () => {
+    condRepo.findUnidade.mockResolvedValue({ id: 5, condominio_id: '1' });
+    repo.findVisitante.mockResolvedValue(7);
+    await registrarNaoPrevisto(portaria, { ...visitante, visitanteId: 7, unidadeId: 5 });
+    expect(repo.findVisitante).toHaveBeenCalledWith(7, '1', { unidadeId: undefined });
   });
 });

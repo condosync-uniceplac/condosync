@@ -78,12 +78,7 @@ export async function preAutorizar(session, dados, agora = new Date()) {
       previsao: 'Informe uma data e horário a partir de agora.',
     });
   }
-  const visitanteId = await visitasRepo.upsertVisitante({
-    condominioId: session.condominioId,
-    nome: dados.nome,
-    tipoDocumento: dados.tipoDocumento,
-    documento: dados.documento,
-  });
+  const visitanteId = await resolverVisitante(session, dados, session.unidadeId);
   const visita = await visitasRepo.create({
     visitanteId,
     unidadeId: session.unidadeId,
@@ -100,6 +95,50 @@ export async function preAutorizar(session, dados, agora = new Date()) {
   };
 }
 
+/**
+ * Visitante da visita: o escolhido nas sugestões (conferindo se quem pede pode vê-lo)
+ * ou um novo, cadastrado/atualizado pelo documento digitado.
+ */
+async function resolverVisitante(session, dados, unidadeDoMorador) {
+  if (dados.visitanteId) {
+    const id = await visitasRepo.findVisitante(dados.visitanteId, session.condominioId, {
+      unidadeId: unidadeDoMorador,
+    });
+    if (!id) throw new AppError(422, 'Dados inválidos.', { nome: 'Visitante não encontrado.' });
+    return id;
+  }
+  return visitasRepo.upsertVisitante({
+    condominioId: session.condominioId,
+    nome: dados.nome,
+    tipoDocumento: dados.tipoDocumento,
+    documento: dados.documento,
+  });
+}
+
+/**
+ * Sugestões para o campo de nome do visitante (menos digitação, menos erro).
+ * Morador: só quem já visitou a unidade dele; portaria e síndico: visitantes do condomínio.
+ * O documento volta mascarado (LGPD); a visita usa o id do visitante escolhido.
+ */
+export async function sugerirVisitantes(session, termo) {
+  const t = String(termo ?? '').trim();
+  if (t.length < 2) return [];
+  if (ehMorador(session) && !session.unidadeId) return [];
+  if (!ehMorador(session) && !ehEquipe(session)) throw new AppError(403, 'Acesso negado.');
+  const rows = await visitasRepo.buscarVisitantes(session.condominioId, {
+    termo: t.slice(0, 50).replace(/[\\%_]/g, '\\$&'), // % e _ são curingas do ILIKE
+    unidadeId: ehMorador(session) ? session.unidadeId : null,
+  });
+  return rows.map((v) => ({
+    id: Number(v.id),
+    nome: v.nome,
+    tipoDocumento: v.tipo_documento,
+    documento: mascararDocumento(v.tipo_documento, v.documento),
+    placa: v.placa_veiculo ? formatPlaca(v.placa_veiculo) : '',
+    ultimaVisita: v.ultima_visita,
+  }));
+}
+
 /** Portaria registra visitante não previsto: fica AGUARDANDO a confirmação do morador. */
 export async function registrarNaoPrevisto(session, dados) {
   if (!ehEquipe(session)) throw new AppError(403, 'Acesso negado.');
@@ -107,12 +146,7 @@ export async function registrarNaoPrevisto(session, dados) {
   if (!unidade || String(unidade.condominio_id) !== String(session.condominioId)) {
     throw new AppError(422, 'Dados inválidos.', { unidadeId: 'Unidade não encontrada.' });
   }
-  const visitanteId = await visitasRepo.upsertVisitante({
-    condominioId: session.condominioId,
-    nome: dados.nome,
-    tipoDocumento: dados.tipoDocumento,
-    documento: dados.documento,
-  });
+  const visitanteId = await resolverVisitante(session, dados);
   const visita = await visitasRepo.create({
     visitanteId,
     unidadeId: unidade.id,
