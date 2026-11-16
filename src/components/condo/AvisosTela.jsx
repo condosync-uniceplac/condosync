@@ -10,6 +10,7 @@ import { CheckCircle2, Download, FileText, Loader2, Pencil, Plus, Trash2 } from 
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { Campo, LegendaObrigatorio, Sugestoes, faltando, useErros } from '@/components/condo/campo';
 import { SELECT_CLASSE } from '@/components/condo/campos-visitante';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAvisos } from '@/lib/useAvisos';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,16 @@ const tamanho = (b) =>
 const TIPO = { 'application/pdf': 'PDF', 'image/png': 'PNG', 'image/jpeg': 'JPG' };
 
 /** RN.20 (versão 2): só o síndico publica; categoria e urgência separadas; leitura e anexos. */
+// Títulos prontos por categoria do mural (o síndico clica e ajusta se precisar).
+const TITULOS = {
+  Obras: ['Obra na fachada', 'Reforma da área comum', 'Pintura das garagens'],
+  Assembleias: ['Convocação para assembleia geral', 'Resultado da assembleia'],
+  Normas: ['Lembrete: horário de silêncio', 'Regras de uso da piscina', 'Uso das vagas de garagem'],
+  Financeiro: ['Vencimento da taxa condominial', 'Prestação de contas do mês'],
+  Manutenção: ['Interrupção no fornecimento de água', 'Manutenção do elevador', 'Dedetização'],
+  Social: ['Festa de confraternização', 'Feira no salão de festas'],
+};
+
 export default function Avisos() {
   // Categoria escolhida no filtro; os dados vêm do hook useAvisos.
   const [filtro, setFiltro] = useState(null);
@@ -63,10 +73,12 @@ export default function Avisos() {
   const [arquivo, setArquivo] = useState(null);
   const [removerAnexo, setRemoverAnexo] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [erros, setErros] = useErros(form);
 
   // Abre o formulário: vazio para novo aviso ou preenchido para editar.
   const abrir = (a) => {
     setEditando(a ?? {});
+    setErros({});
     setArquivo(null);
     setRemoverAnexo(false);
     setForm(
@@ -83,6 +95,13 @@ export default function Avisos() {
 
   // Monta o formulário com o arquivo e envia (publicar ou editar).
   const salvar = async () => {
+    // Confere os obrigatórios antes de enviar.
+    const vazios = faltando(form, ['titulo', 'categoriaId', 'prioridade', 'corpo']);
+    setErros(vazios);
+    if (Object.keys(vazios).length) {
+      toast.error('Preencha os campos obrigatórios destacados.');
+      return;
+    }
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     if (arquivo) fd.append('anexo', arquivo);
@@ -98,6 +117,7 @@ export default function Avisos() {
       }
       setEditando(null);
     } catch (e) {
+      setErros(e.campos ?? {});
       toast.error(e.message);
     } finally {
       setSalvando(false);
@@ -257,18 +277,9 @@ export default function Avisos() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="a-titulo">Título</Label>
-              <Input
-                id="a-titulo"
-                value={form.titulo}
-                onChange={set('titulo')}
-                className="h-11 rounded-xl"
-              />
-            </div>
+            <LegendaObrigatorio />
             <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="a-cat">Categoria</Label>
+              <Campo id="a-cat" label="Categoria" obrigatorio erro={erros.categoriaId}>
                 <select
                   id="a-cat"
                   value={form.categoriaId}
@@ -281,9 +292,8 @@ export default function Avisos() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="a-prio">Urgência</Label>
+              </Campo>
+              <Campo id="a-prio" label="Urgência" obrigatorio erro={erros.prioridade}>
                 <select
                   id="a-prio"
                   value={form.prioridade}
@@ -293,10 +303,30 @@ export default function Avisos() {
                   <option value="NORMAL">Normal</option>
                   <option value="URGENTE">Urgente</option>
                 </select>
-              </div>
+              </Campo>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="a-corpo">Comunicado</Label>
+            <Campo id="a-titulo" label="Título" obrigatorio erro={erros.titulo}>
+              <Input
+                id="a-titulo"
+                value={form.titulo}
+                onChange={set('titulo')}
+                className="h-11 rounded-xl"
+              />
+              <Sugestoes
+                itens={
+                  TITULOS[categorias.find((c) => String(c.id) === String(form.categoriaId))?.nome]
+                }
+                ativo={form.titulo}
+                onEscolher={(t) => setForm({ ...form, titulo: t })}
+              />
+            </Campo>
+            <Campo
+              id="a-corpo"
+              label="Comunicado"
+              obrigatorio
+              erro={erros.corpo}
+              dica="Mínimo de 10 caracteres."
+            >
               <Textarea
                 id="a-corpo"
                 rows={6}
@@ -304,11 +334,12 @@ export default function Avisos() {
                 onChange={set('corpo')}
                 className="rounded-xl"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="a-anexo">
-                {editando?.anexos?.length ? 'Trocar anexo (opcional)' : 'Anexo (opcional)'}
-              </Label>
+            </Campo>
+            <Campo
+              id="a-anexo"
+              label={editando?.anexos?.length ? 'Trocar anexo (opcional)' : 'Anexo (opcional)'}
+              erro={erros.anexo}
+            >
               <Input
                 id="a-anexo"
                 type="file"
@@ -327,7 +358,7 @@ export default function Avisos() {
                   Remover o anexo atual ({editando.anexos[0].nome})
                 </label>
               )}
-            </div>
+            </Campo>
           </div>
           <DialogFooter>
             <Button variant="outline" className="rounded-xl" onClick={() => setEditando(null)}>

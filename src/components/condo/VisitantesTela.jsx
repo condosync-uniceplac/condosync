@@ -10,6 +10,7 @@ import { BellRing, Check, Loader2, Ticket, UserPlus, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { Campo, LegendaObrigatorio, Sugestoes, faltando, useErros } from '@/components/condo/campo';
 import { CamposVisitante } from '@/components/condo/campos-visitante';
 import { VisitaStatus, formatarDataHora } from '@/components/condo/VisitaStatus';
 import { Button } from '@/components/ui/button';
@@ -21,11 +22,48 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useVisitas } from '@/lib/useVisitas';
 
 // Formulário vazio da pré-autorização.
-const vazio = { nome: '', tipoDocumento: 'CPF', documento: '', previsao: '', placa: '' };
+const vazio = {
+  visitanteId: '',
+  nome: '',
+  tipoDocumento: 'CPF',
+  documento: '',
+  previsao: '',
+  placa: '',
+};
+
+// Data e hora no formato do campo datetime-local, no fuso de Brasília.
+const paraCampo = (d) => {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(d)
+      .map((x) => [x.type, x.value]),
+  );
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+};
+
+// Atalhos de horário da previsão (o morador clica em vez de digitar).
+const atalhosPrevisao = () => {
+  const agora = new Date();
+  const hoje = paraCampo(agora).slice(0, 10);
+  const amanha = paraCampo(new Date(agora.getTime() + 86_400_000)).slice(0, 10);
+  const lista = [{ rotulo: 'Agora', valor: paraCampo(agora) }];
+  if (paraCampo(agora).slice(11) < '19:00')
+    lista.push({ rotulo: 'Hoje 19h', valor: `${hoje}T19:00` });
+  lista.push({ rotulo: 'Amanhã 10h', valor: `${amanha}T10:00` });
+  lista.push({ rotulo: 'Amanhã 19h', valor: `${amanha}T19:00` });
+  return lista;
+};
 
 export default function Visitantes() {
   // Visitas da unidade vêm do hook useVisitas.
@@ -33,18 +71,27 @@ export default function Visitantes() {
   const [form, setForm] = useState(vazio);
   const [convite, setConvite] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [erros, setErros] = useErros(form);
 
   const aguardando = visitas.filter((v) => v.status === 'AGUARDANDO');
   const demais = visitas.filter((v) => v.status !== 'AGUARDANDO');
 
   // Pré-autoriza o visitante e mostra o código do convite.
   const autorizar = async () => {
+    // Confere os obrigatórios antes de enviar.
+    const vazios = faltando(form, ['nome', 'documento', 'previsao']);
+    setErros(vazios);
+    if (Object.keys(vazios).length) {
+      toast.error('Preencha os campos obrigatórios destacados.');
+      return;
+    }
     setEnviando(true);
     try {
       const v = await criar(form);
       setConvite({ codigo: v.convite, nome: form.nome });
       setForm(vazio);
     } catch (e) {
+      setErros(e.campos ?? {});
       toast.error(e.message);
     } finally {
       setEnviando(false);
@@ -113,9 +160,9 @@ export default function Visitantes() {
             A portaria libera a entrada sem precisar ligar para você.
           </p>
           <div className="mt-4 space-y-3">
-            <CamposVisitante form={form} setForm={setForm} />
-            <div className="space-y-1.5">
-              <Label htmlFor="previsao">Data e horário previstos</Label>
+            <LegendaObrigatorio />
+            <CamposVisitante form={form} setForm={setForm} erros={erros} />
+            <Campo id="previsao" label="Data e horário previstos" obrigatorio erro={erros.previsao}>
               <Input
                 id="previsao"
                 type="datetime-local"
@@ -123,7 +170,12 @@ export default function Visitantes() {
                 onChange={(e) => setForm({ ...form, previsao: e.target.value })}
                 className="h-11 rounded-xl"
               />
-            </div>
+              <Sugestoes
+                rotulo="Atalhos:"
+                itens={atalhosPrevisao()}
+                onEscolher={(v) => setForm({ ...form, previsao: v })}
+              />
+            </Campo>
             <Button className="mt-2 h-11 w-full rounded-xl" onClick={autorizar} disabled={enviando}>
               {enviando && <Loader2 className="h-4 w-4 animate-spin" />} Pré-autorizar visitante
             </Button>

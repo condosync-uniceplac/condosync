@@ -8,6 +8,14 @@
 import { CalendarDays, Loader2, Pencil, Plus, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import {
+  Campo,
+  Contador,
+  LegendaObrigatorio,
+  Sugestoes,
+  faltando,
+  useErros,
+} from '@/components/condo/campo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +27,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { enviarJson, lerResposta } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 
@@ -29,12 +36,26 @@ const taxa = (v) =>
   v > 0 ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Isento';
 
 /** RF.09 (Sprint 3): o síndico cadastra, edita e desativa os espaços de reserva. */
+// Nomes comuns de áreas de condomínio, com uma capacidade inicial sugerida.
+const MODELOS_ESPACO = [
+  { rotulo: 'Salão de Festas', valor: { nome: 'Salão de Festas', capacidade: '60' } },
+  { rotulo: 'Churrasqueira', valor: { nome: 'Churrasqueira', capacidade: '20' } },
+  { rotulo: 'Piscina', valor: { nome: 'Piscina', capacidade: '30' } },
+  { rotulo: 'Quadra', valor: { nome: 'Quadra Poliesportiva', capacidade: '20' } },
+  { rotulo: 'Espaço Gourmet', valor: { nome: 'Espaço Gourmet', capacidade: '25' } },
+  { rotulo: 'Brinquedoteca', valor: { nome: 'Brinquedoteca', capacidade: '15' } },
+];
+
+// Valores de taxa mais usados.
+const TAXAS = ['0', '50', '100', '150'];
+
 export function EspacosAba() {
   // Estado: lista de espaços e formulário aberto (novo ou edição).
   const [espacos, setEspacos] = useState(null);
   const [editando, setEditando] = useState(null); // null = fechado; {} = novo; espaço = edição
   const [form, setForm] = useState(vazio);
   const [salvando, setSalvando] = useState(false);
+  const [erros, setErros] = useErros(form);
 
   // Busca os espaços na API.
   const carregar = useCallback(async () => {
@@ -54,6 +75,7 @@ export function EspacosAba() {
   // Abre o formulário vazio (novo) ou com os dados do espaço (edição).
   const abrir = (e) => {
     setEditando(e ?? {});
+    setErros({});
     setForm(
       e
         ? {
@@ -69,6 +91,13 @@ export function EspacosAba() {
 
   // Cria ou atualiza o espaço.
   const salvar = async () => {
+    // Confere os obrigatórios antes de enviar.
+    const vazios = faltando(form, ['nome', 'capacidade', 'valor']);
+    setErros(vazios);
+    if (Object.keys(vazios).length) {
+      toast.error('Preencha os campos obrigatórios destacados.');
+      return;
+    }
     setSalvando(true);
     const corpo = {
       nome: form.nome,
@@ -88,6 +117,7 @@ export function EspacosAba() {
       setEditando(null);
       await carregar();
     } catch (e) {
+      setErros(e.campos ?? {});
       toast.error(e.message);
     } finally {
       setSalvando(false);
@@ -162,17 +192,23 @@ export function EspacosAba() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="e-nome">Nome</Label>
+            <LegendaObrigatorio />
+            <Campo id="e-nome" label="Nome" obrigatorio erro={erros.nome}>
               <Input
                 id="e-nome"
                 value={form.nome}
                 onChange={set('nome')}
                 className="h-11 rounded-xl"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="e-desc">Descrição (opcional)</Label>
+              {!editando?.id && (
+                <Sugestoes
+                  itens={MODELOS_ESPACO}
+                  ativo={MODELOS_ESPACO.find((m) => m.valor.nome === form.nome)?.rotulo}
+                  onEscolher={(v) => setForm({ ...form, ...v })}
+                />
+              )}
+            </Campo>
+            <Campo id="e-desc" label="Descrição (opcional)" erro={erros.descricao}>
               <Input
                 id="e-desc"
                 value={form.descricao}
@@ -180,21 +216,18 @@ export function EspacosAba() {
                 maxLength={300}
                 className="h-11 rounded-xl"
               />
-            </div>
+            </Campo>
             <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="e-cap">Capacidade (pessoas)</Label>
-                <Input
+              <Campo id="e-cap" label="Capacidade (pessoas)" obrigatorio erro={erros.capacidade}>
+                <Contador
                   id="e-cap"
-                  type="number"
                   min={1}
-                  value={form.capacidade}
-                  onChange={set('capacidade')}
-                  className="h-11 rounded-xl"
+                  max={2000}
+                  valor={form.capacidade}
+                  onChange={(v) => setForm({ ...form, capacidade: v })}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="e-valor">Taxa (R$, 0 = isento)</Label>
+              </Campo>
+              <Campo id="e-valor" label="Taxa (R$, 0 = isento)" obrigatorio erro={erros.valor}>
                 <Input
                   id="e-valor"
                   inputMode="decimal"
@@ -202,7 +235,13 @@ export function EspacosAba() {
                   onChange={set('valor')}
                   className="h-11 rounded-xl"
                 />
-              </div>
+                <Sugestoes
+                  rotulo="R$"
+                  itens={TAXAS}
+                  ativo={String(form.valor)}
+                  onEscolher={(v) => setForm({ ...form, valor: v })}
+                />
+              </Campo>
             </div>
             {editando?.id && (
               <label className="flex items-center gap-2 text-sm text-foreground">

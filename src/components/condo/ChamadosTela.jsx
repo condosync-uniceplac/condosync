@@ -10,6 +10,7 @@ import { ImageIcon, Loader2, MessageSquare, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { Campo, LegendaObrigatorio, Sugestoes, faltando, useErros } from '@/components/condo/campo';
 import { SELECT_CLASSE } from '@/components/condo/campos-visitante';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,19 @@ const URGENCIA = {
 };
 const PERFIL = { MORADOR: 'Morador', PORTARIA: 'Portaria', SINDICO: 'Síndico', ADMIN: 'Admin' };
 const vazio = { titulo: '', descricao: '', categoriaId: '', urgencia: 'MEDIA' };
+
+// Títulos prontos por categoria (o morador clica em vez de digitar; dá para editar depois).
+const TITULOS = {
+  Barulho: ['Barulho após as 22h', 'Som alto em apartamento', 'Obra fora do horário permitido'],
+  'Vaga de Garagem': [
+    'Carro estacionado na minha vaga',
+    'Vaga bloqueada',
+    'Veículo em local proibido',
+  ],
+  Manutenção: ['Lâmpada queimada', 'Vazamento de água', 'Portão com defeito', 'Elevador parado'],
+  Segurança: ['Portão aberto', 'Pessoa estranha no condomínio', 'Câmera sem funcionar'],
+  Limpeza: ['Lixo acumulado', 'Área comum suja', 'Escada precisando de limpeza'],
+};
 
 // Data e hora no fuso de Brasília.
 const dataHora = (iso) =>
@@ -91,6 +105,7 @@ export default function Chamados() {
   const [form, setForm] = useState(vazio);
   const [arquivo, setArquivo] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [erros, setErros] = useErros(form);
 
   // Estado do detalhe: chamado aberto, histórico, comentário digitado e ação em andamento.
   const [aberto, setAberto] = useState(null); // id do chamado no detalhe
@@ -104,11 +119,19 @@ export default function Chamados() {
   const abrirNovo = () => {
     setForm({ ...vazio, categoriaId: categorias[0] ? String(categorias[0].id) : '' });
     setArquivo(null);
+    setErros({});
     setNovo(true);
   };
 
   // Envia o novo chamado (com a foto, se houver).
   const enviar = async () => {
+    // Confere os obrigatórios antes de enviar.
+    const vazios = faltando(form, ['categoriaId', 'urgencia', 'titulo', 'descricao']);
+    setErros(vazios);
+    if (Object.keys(vazios).length) {
+      toast.error('Preencha os campos obrigatórios destacados.');
+      return;
+    }
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     if (arquivo) fd.append('anexo', arquivo);
@@ -118,6 +141,7 @@ export default function Chamados() {
       toast.success('Chamado aberto! A administração foi notificada.');
       setNovo(false);
     } catch (e) {
+      setErros(e.campos ?? {});
       toast.error(e.message);
     } finally {
       setSalvando(false);
@@ -273,19 +297,9 @@ export default function Chamados() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="c-titulo">Título</Label>
-              <Input
-                id="c-titulo"
-                value={form.titulo}
-                onChange={set('titulo')}
-                placeholder="ex: Infiltração na garagem do Bloco B"
-                className="h-11 rounded-xl"
-              />
-            </div>
+            <LegendaObrigatorio />
             <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="c-cat">Categoria</Label>
+              <Campo id="c-cat" label="Categoria" obrigatorio erro={erros.categoriaId}>
                 <select
                   id="c-cat"
                   value={form.categoriaId}
@@ -298,9 +312,8 @@ export default function Chamados() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="c-urg">Urgência</Label>
+              </Campo>
+              <Campo id="c-urg" label="Urgência" obrigatorio erro={erros.urgencia}>
                 <select
                   id="c-urg"
                   value={form.urgencia}
@@ -311,10 +324,31 @@ export default function Chamados() {
                   <option value="MEDIA">Média</option>
                   <option value="ALTA">Alta</option>
                 </select>
-              </div>
+              </Campo>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="c-desc">Descrição</Label>
+            <Campo id="c-titulo" label="Título" obrigatorio erro={erros.titulo}>
+              <Input
+                id="c-titulo"
+                value={form.titulo}
+                onChange={set('titulo')}
+                placeholder="ex: Infiltração na garagem do Bloco B"
+                className="h-11 rounded-xl"
+              />
+              <Sugestoes
+                itens={
+                  TITULOS[categorias.find((x) => String(x.id) === String(form.categoriaId))?.nome]
+                }
+                ativo={form.titulo}
+                onEscolher={(t) => setForm({ ...form, titulo: t })}
+              />
+            </Campo>
+            <Campo
+              id="c-desc"
+              label="Descrição"
+              obrigatorio
+              erro={erros.descricao}
+              dica="Conte o que aconteceu, o local e o horário (mínimo de 10 caracteres)."
+            >
               <Textarea
                 id="c-desc"
                 rows={4}
@@ -323,9 +357,13 @@ export default function Chamados() {
                 placeholder="Detalhe o que aconteceu, local e horário."
                 className="rounded-xl"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="c-foto">Foto (opcional)</Label>
+            </Campo>
+            <Campo
+              id="c-foto"
+              label="Foto (opcional)"
+              erro={erros.anexo}
+              dica="PNG, JPG ou PDF de até 2 MB."
+            >
               <Input
                 id="c-foto"
                 type="file"
@@ -333,8 +371,7 @@ export default function Chamados() {
                 onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
                 className="h-11 rounded-xl"
               />
-              <p className="text-xs text-muted-foreground">PNG, JPG ou PDF de até 2 MB.</p>
-            </div>
+            </Campo>
           </div>
           <DialogFooter>
             <Button variant="outline" className="rounded-xl" onClick={() => setNovo(false)}>

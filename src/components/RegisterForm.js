@@ -17,10 +17,16 @@ import { formatCpf, formatTelefone } from '@/lib/masks';
 const perfil = 'MORADOR';
 
 // Campo do formulário com rótulo, dica e mensagem de erro.
+// Todos os campos do cadastro são obrigatórios: o rótulo leva o asterisco.
 function Field({ id, label, error, hint, children }) {
   return (
-    <div className={styles.field}>
-      <label htmlFor={id}>{label}</label>
+    <div className={`${styles.field} ${error ? styles.fieldInvalid : ''}`}>
+      <label htmlFor={id}>
+        {label}
+        <span className={styles.obrigatorio} aria-hidden="true">
+          *
+        </span>
+      </label>
       {children}
       {error ? (
         <span className={styles.fieldError}>{error}</span>
@@ -138,6 +144,9 @@ export default function RegisterForm() {
           {erro}
         </p>
       )}
+      <p className={styles.legenda}>
+        Campos com <span className={styles.obrigatorio}>*</span> são obrigatórios.
+      </p>
 
       <Field id="nome" label="Nome completo" error={campos.nome}>
         <input id="nome" name="nome" autoComplete="name" required />
@@ -186,8 +195,13 @@ export default function RegisterForm() {
         <Field id="dataNascimento" label="Data de nascimento" error={campos.dataNascimento}>
           <input id="dataNascimento" name="dataNascimento" type="date" required />
         </Field>
-        <div className={styles.field}>
-          <label htmlFor="senha">Senha</label>
+        <div className={`${styles.field} ${campos.senha ? styles.fieldInvalid : ''}`}>
+          <label htmlFor="senha">
+            Senha
+            <span className={styles.obrigatorio} aria-hidden="true">
+              *
+            </span>
+          </label>
           <input
             id="senha"
             name="senha"
@@ -257,6 +271,9 @@ export default function RegisterForm() {
         <input type="checkbox" name="aceiteTermos" required />
         <span>
           Li e aceito os <a href="#">Termos de Uso</a>.
+          <span className={styles.obrigatorio} aria-hidden="true">
+            *
+          </span>
           {campos.aceiteTermos && <span className={styles.fieldError}> {campos.aceiteTermos}</span>}
         </span>
       </label>
@@ -264,6 +281,9 @@ export default function RegisterForm() {
         <input type="checkbox" name="aceitePrivacidade" required />
         <span>
           Li e aceito a <a href="#">Política de Privacidade</a>.
+          <span className={styles.obrigatorio} aria-hidden="true">
+            *
+          </span>
           {campos.aceitePrivacidade && (
             <span className={styles.fieldError}> {campos.aceitePrivacidade}</span>
           )}

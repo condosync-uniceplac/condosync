@@ -19,6 +19,7 @@ import {
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/condo/AppLayout';
+import { Campo, LegendaObrigatorio, Sugestoes, faltando, useErros } from '@/components/condo/campo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +32,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { dataLocal } from '@/lib/turnos';
 import { useEnquetes } from '@/lib/useEnquetes';
@@ -48,6 +48,14 @@ const dataHora = (iso) =>
   });
 
 // Formulário vazio de nova enquete (começa com 2 opções).
+// Conjuntos de opções prontos (o síndico clica em vez de digitar cada opção).
+const MODELOS_OPCOES = [
+  { rotulo: 'Sim / Não', valor: ['Sim', 'Não'] },
+  { rotulo: 'Sim / Não / Abstenção', valor: ['Sim', 'Não', 'Abstenção'] },
+  { rotulo: 'Concordo / Discordo', valor: ['Concordo', 'Discordo'] },
+  { rotulo: 'Manhã / Tarde / Noite', valor: ['Manhã', 'Tarde', 'Noite'] },
+];
+
 const novoForm = () => ({ pergunta: '', descricao: '', encerraEm: '', opcoes: ['', ''] });
 
 // Cartão de uma enquete: opções com a porcentagem, o voto da unidade e a vencedora (se encerrada).
@@ -171,6 +179,7 @@ export default function Enquetes() {
   const [aberto, setAberto] = useState(false);
   const [form, setForm] = useState(novoForm);
   const [salvando, setSalvando] = useState(false);
+  const [erros, setErros] = useErros(form);
 
   const abertas = enquetes.filter((e) => !e.encerrada);
   const encerradas = enquetes.filter((e) => e.encerrada);
@@ -212,12 +221,24 @@ export default function Enquetes() {
 
   // Publica a nova enquete.
   const salvar = async () => {
+    // Confere os obrigatórios antes de enviar (inclusive opções em branco).
+    const vazios = faltando(form, ['pergunta', 'encerraEm']);
+    if (form.opcoes.some((o) => !o.trim())) vazios.opcoes = 'Preencha todas as opções.';
+    setErros(vazios);
+    if (Object.keys(vazios).length) {
+      toast.error('Preencha os campos obrigatórios destacados.');
+      return;
+    }
     setSalvando(true);
     try {
       await criar(form);
       toast.success('Enquete publicada para os moradores.');
       setAberto(false);
     } catch (e) {
+      // Erros de uma opção específica (opcoes.1) aparecem no bloco de opções.
+      const campos = e.campos ?? {};
+      const opcao = Object.entries(campos).find(([k]) => k.startsWith('opcoes'));
+      setErros({ ...campos, ...(opcao ? { opcoes: opcao[1] } : {}) });
       toast.error(e.message);
     } finally {
       setSalvando(false);
@@ -225,6 +246,11 @@ export default function Enquetes() {
   };
 
   const hoje = dataLocal(new Date());
+  // Atalhos de prazo: daqui a 7, 15 e 30 dias.
+  const prazos = [7, 15, 30].map((n) => ({
+    rotulo: `${n} dias`,
+    valor: dataLocal(new Date(Date.now() + n * 86_400_000)),
+  }));
 
   // Grade de cartões (usada para abertas e encerradas).
   const grade = (lista) => (
@@ -253,6 +279,7 @@ export default function Enquetes() {
           className="rounded-xl"
           onClick={() => {
             setForm(novoForm());
+            setErros({});
             setAberto(true);
           }}
         >
@@ -296,8 +323,8 @@ export default function Enquetes() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="q-pergunta">Pergunta</Label>
+            <LegendaObrigatorio />
+            <Campo id="q-pergunta" label="Pergunta" obrigatorio erro={erros.pergunta}>
               <Input
                 id="q-pergunta"
                 value={form.pergunta}
@@ -305,9 +332,8 @@ export default function Enquetes() {
                 placeholder="ex: Devemos pintar a fachada em dezembro?"
                 className="h-11 rounded-xl"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="q-desc">Descrição (opcional)</Label>
+            </Campo>
+            <Campo id="q-desc" label="Descrição (opcional)" erro={erros.descricao}>
               <Textarea
                 id="q-desc"
                 rows={3}
@@ -316,9 +342,14 @@ export default function Enquetes() {
                 placeholder="Contexto, valores envolvidos, prazos..."
                 className="rounded-xl"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="q-fim">Votação aberta até (inclusive)</Label>
+            </Campo>
+            <Campo
+              id="q-fim"
+              label="Votação aberta até (inclusive)"
+              obrigatorio
+              erro={erros.encerraEm}
+              dica="Encerra às 23:59 do dia escolhido (no máximo 90 dias)."
+            >
               <Input
                 id="q-fim"
                 type="date"
@@ -327,15 +358,32 @@ export default function Enquetes() {
                 onChange={(e) => setForm({ ...form, encerraEm: e.target.value })}
                 className="h-11 rounded-xl"
               />
-              <p className="text-xs text-muted-foreground">
-                Encerra às 23:59 do dia escolhido (no máximo 90 dias).
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Opções</Label>
+              <Sugestoes
+                rotulo="Prazo:"
+                itens={prazos}
+                ativo={prazos.find((p) => p.valor === form.encerraEm)?.rotulo}
+                onEscolher={(v) => setForm({ ...form, encerraEm: v })}
+              />
+            </Campo>
+            <Campo
+              id="q-opcao-1"
+              label="Opções"
+              obrigatorio
+              erro={erros.opcoes}
+              dica="De 2 a 10 opções, sem repetir."
+            >
+              <Sugestoes
+                rotulo="Modelos:"
+                itens={MODELOS_OPCOES}
+                ativo={
+                  MODELOS_OPCOES.find((m) => m.valor.join('|') === form.opcoes.join('|'))?.rotulo
+                }
+                onEscolher={(v) => setForm({ ...form, opcoes: [...v] })}
+              />
               {form.opcoes.map((o, i) => (
                 <div key={i} className="flex gap-2">
                   <Input
+                    id={`q-opcao-${i + 1}`}
                     aria-label={`Opção ${i + 1}`}
                     value={o}
                     onChange={(e) => setOpcao(i, e.target.value)}
@@ -368,7 +416,7 @@ export default function Enquetes() {
                   <Plus className="h-3.5 w-3.5" /> Adicionar opção
                 </Button>
               )}
-            </div>
+            </Campo>
           </div>
           <DialogFooter>
             <Button variant="outline" className="rounded-xl" onClick={() => setAberto(false)}>
